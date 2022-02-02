@@ -197,6 +197,12 @@ int main(int argc, char* argv[]) {
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
+    // Prefetch the FB to the GPU
+    int device = -1;
+    checkCudaErrors(cudaGetDevice(&device));
+    checkCudaErrors(cudaMemPrefetchAsync(fb, fb_size, device, NULL));
+    checkCudaErrors(cudaGetLastError());
+
     clock_t start, stop;
     start = clock();
     // Render our buffer
@@ -213,6 +219,10 @@ int main(int argc, char* argv[]) {
     std::cerr << "took " << timer_seconds << " seconds.\n";
 
     std::cerr << "stats:" << cuda_runtime_version << "," << nx << "," << ny << "," << ns << "," << tx << "," << ty << "," << timer_seconds << "\n";
+
+    // Prefetch the FB back to the CPU
+    checkCudaErrors(cudaMemPrefetchAsync(fb, fb_size, cudaCpuDeviceId, NULL));
+    checkCudaErrors(cudaGetLastError());
 
     // Output FB as Image
     std::cout << "P3\n" << nx << " " << ny << "\n255\n";
