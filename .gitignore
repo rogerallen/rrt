@@ -1,2 +1,6 @@
 rrt
 *.ppm
+*.log
+*.nsys-rep
+*.ncu-rep
+*.sqlite

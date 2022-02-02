@@ -7,4 +7,4 @@
 - [ ] scene loading
 - [ ] shared-memory sample reduction
 - [ ] PNG output
-
+- [ ] double precision calculations

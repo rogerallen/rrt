@@ -30,11 +30,11 @@ out.ppm: rrt
 # to figure out the right device, if not 0 run this:
 #   nsys profile --gpu-metrics-device=help
 profile_sys: rrt
-	nsys profile --gpu-metrics-device=0 --stats=true --force-overwrite=true -o profile_sys ./rrt > profile_sys.log
+	nsys profile --gpu-metrics-device=0 --stats=true --force-overwrite=true -o profile_sys ./rrt $(RUNARGS) > profile_sys.log
 
 # -f for force overwrite, -c 1 for first launch, -set full to control 
 profile_kernel: rrt
-	ncu -f -k render -c 1 --set full --import-source on -o profile_kernel ./rrt > profile_kernel.log
+	ncu -f -k render -c 1 --set full --import-source on -o profile_kernel ./rrt $(RUNARGS) > profile_kernel.log
 
 clean:
 	rm -f rrt *.ppm *.nsys-rep *.ncu-rep *.log *.sqlite
