@@ -73,21 +73,21 @@ __global__ void render_init(int max_x, int max_y, curandState *rand_state) {
 
 __global__ void
 __launch_bounds__(64,12) // maxThreadsPerBlock, minBlocksPerMultiprocessor)
-render(vec3 *fb, int max_x, int max_y, int ns, camera **cam, hitable **world, curandState *rand_state) {
+render(vec3 *fb, int max_x, int max_y, int num_samples, camera **cam, hitable **world, curandState *rand_state) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     if((i >= max_x) || (j >= max_y)) return;
     int pixel_index = j*max_x + i;
     curandState local_rand_state = rand_state[pixel_index];
     vec3 col(0,0,0);
-    for(int s=0; s < ns; s++) {
+    for(int s=0; s < num_samples; s++) {
         float u = float(i + curand_uniform(&local_rand_state)) / float(max_x);
         float v = float(j + curand_uniform(&local_rand_state)) / float(max_y);
         ray r = (*cam)->get_ray(u, v, &local_rand_state);
         col += color(r, world, &local_rand_state);
     }
     rand_state[pixel_index] = local_rand_state;
-    col /= float(ns);
+    col /= float(num_samples);
     col[0] = sqrt(col[0]);
     col[1] = sqrt(col[1]);
     col[2] = sqrt(col[2]);
@@ -96,7 +96,7 @@ render(vec3 *fb, int max_x, int max_y, int ns, camera **cam, hitable **world, cu
 
 #define RND (curand_uniform(&local_rand_state))
 
-__global__ void create_world(hitable **d_list, hitable **d_world, camera **d_camera, int nx, int ny, curandState *rand_state) {
+__global__ void create_world(hitable **d_list, hitable **d_world, camera **d_camera, int image_width, int image_height, curandState *rand_state) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
         curandState local_rand_state = *rand_state;
         d_list[0] = new sphere(vec3(0,-1000.0,-1), 1000,
@@ -133,7 +133,7 @@ __global__ void create_world(hitable **d_list, hitable **d_world, camera **d_cam
                                  lookat,
                                  vec3(0,1,0),
                                  30.0,
-                                 float(nx)/float(ny),
+                                 float(image_width)/float(image_height),
                                  aperture,
                                  dist_to_focus);
     }
@@ -154,20 +154,22 @@ int main(int argc, char* argv[]) {
     // 1200    800    10      8      8
     assert(argc == 6);
 
-    int nx = atoi(argv[1]);
-    int ny = atoi(argv[2]);
-    int ns = atoi(argv[3]);
-    int tx = atoi(argv[4]);
-    int ty = atoi(argv[5]);
+    int image_width = atoi(argv[1]);
+    int image_height = atoi(argv[2]);
+    int num_samples = atoi(argv[3]);
+    int num_threads_x = atoi(argv[4]);
+    int num_threads_y = atoi(argv[5]);
+    int num_blocks_x = image_width/num_threads_x+1;
+    int num_blocks_y = image_height/num_threads_y+1;
 
     int cuda_runtime_version = -1;
     checkCudaErrors(cudaRuntimeGetVersion(&cuda_runtime_version));
 
     std::cerr << "CUDA Runtime Version " << cuda_runtime_version << "\n";
-    std::cerr << "Rendering a " << nx << "x" << ny << " image with " << ns << " samples per pixel ";
-    std::cerr << "in " << tx << "x" << ty << " blocks.\n";
+    std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << num_samples << " samples per pixel ";
+    std::cerr << "in " << num_blocks_x << "x" << num_blocks_y << " = " << num_blocks_x * num_blocks_y << " blocks of " << num_threads_x << "x" << num_threads_y << " threads each.\n";
 
-    int num_pixels = nx*ny;
+    int num_pixels = image_width*image_height;
     size_t fb_size = num_pixels*sizeof(vec3);
 
     // allocate FB
@@ -193,7 +195,7 @@ int main(int argc, char* argv[]) {
     checkCudaErrors(cudaMalloc((void **)&d_world, sizeof(hitable *)));
     camera **d_camera;
     checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
-    create_world<<<1,1>>>(d_list, d_world, d_camera, nx, ny, d_rand_state2);
+    create_world<<<1,1>>>(d_list, d_world, d_camera, image_width, image_height, d_rand_state2);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
@@ -206,29 +208,29 @@ int main(int argc, char* argv[]) {
     clock_t start, stop;
     start = clock();
     // Render our buffer
-    dim3 blocks(nx/tx+1,ny/ty+1);
-    dim3 threads(tx,ty);
-    render_init<<<blocks, threads>>>(nx, ny, d_rand_state);
+    dim3 blocks(num_blocks_x,num_blocks_y);
+    dim3 threads(num_threads_x,num_threads_y);
+    render_init<<<blocks, threads>>>(image_width, image_height, d_rand_state);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
-    render<<<blocks, threads>>>(fb, nx, ny,  ns, d_camera, d_world, d_rand_state);
+    render<<<blocks, threads>>>(fb, image_width, image_height,  num_samples, d_camera, d_world, d_rand_state);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
     stop = clock();
     double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
     std::cerr << "took " << timer_seconds << " seconds.\n";
 
-    std::cerr << "stats:" << cuda_runtime_version << "," << nx << "," << ny << "," << ns << "," << tx << "," << ty << "," << timer_seconds << "\n";
+    std::cerr << "stats:" << cuda_runtime_version << "," << image_width << "," << image_height << "," << num_samples << "," << num_threads_x << "," << num_threads_y << "," << timer_seconds << "\n";
 
     // Prefetch the FB back to the CPU
     checkCudaErrors(cudaMemPrefetchAsync(fb, fb_size, cudaCpuDeviceId, NULL));
     checkCudaErrors(cudaGetLastError());
 
     // Output FB as Image
-    std::cout << "P3\n" << nx << " " << ny << "\n255\n";
-    for (int j = ny-1; j >= 0; j--) {
-        for (int i = 0; i < nx; i++) {
-            size_t pixel_index = j*nx + i;
+    std::cout << "P3\n" << image_width << " " << image_height << "\n255\n";
+    for (int j = image_height-1; j >= 0; j--) {
+        for (int i = 0; i < image_width; i++) {
+            size_t pixel_index = j*image_width + i;
             int ir = int(255.99*fb[pixel_index].r());
             int ig = int(255.99*fb[pixel_index].g());
             int ib = int(255.99*fb[pixel_index].b());
