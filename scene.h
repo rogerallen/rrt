@@ -23,27 +23,31 @@ struct scene_sphere {
     int material_index;
 };
 
-enum scene_material_t { LAMBERTIAN, METAL, DIELECTRIC };
+enum scene_material_t { LAMBERTIAN = 0, METAL, DIELECTRIC };
 
-union scene_material {
+struct scene_material {
 
     scene_material(){};
     ~scene_material(){};
 
     scene_material_t type;
 
-    struct {
-        vec3 albedo;
-    } lambertian;
+    union U {
+        U(){};
+        ~U(){};
+        struct {
+            vec3 albedo;
+        } lambertian;
 
-    struct {
-        vec3 albedo;
-        double fuzz;
-    } metal;
+        struct {
+            vec3 albedo;
+            double fuzz;
+        } metal;
 
-    struct {
-        double ref_idx;
-    } dielectric;
+        struct {
+            double ref_idx;
+        } dielectric;
+    } mat;
 };
 
 class scene {
@@ -103,7 +107,7 @@ class scene {
                     iss >> g_str;
                     iss >> b_str;
                     new_material->type = LAMBERTIAN;
-                    new_material->lambertian.albedo = vec3(
+                    new_material->mat.lambertian.albedo = vec3(
                         std::stod(r_str), std::stod(g_str), std::stod(b_str));
                 }
                 else if (type_str == "metal") {
@@ -113,15 +117,15 @@ class scene {
                     iss >> b_str;
                     iss >> f_str;
                     new_material->type = METAL;
-                    new_material->metal.albedo = vec3(
+                    new_material->mat.metal.albedo = vec3(
                         std::stod(r_str), std::stod(g_str), std::stod(b_str));
-                    new_material->metal.fuzz = std::stod(f_str);
+                    new_material->mat.metal.fuzz = std::stod(f_str);
                 }
                 else if (type_str == "dielectric") {
                     std::string r_str;
                     iss >> r_str;
                     new_material->type = DIELECTRIC;
-                    new_material->dielectric.ref_idx = std::stod(r_str);
+                    new_material->mat.dielectric.ref_idx = std::stod(r_str);
                 }
                 else {
                     std::cerr << "ERROR: unknown material type: " << type_str

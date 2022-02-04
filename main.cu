@@ -106,6 +106,7 @@ __global__ void
 
 #define RND (curand_uniform(&local_rand_state))
 
+#if 0
 __global__ void create_world(hitable **d_hitables, hitable **d_world,
                              camera **d_camera, int image_width,
                              int image_height, curandState *rand_state)
@@ -169,6 +170,7 @@ __global__ void free_world(hitable **d_hitables, hitable **d_world,
     delete *d_world;
     delete *d_camera;
 }
+#endif
 
 void usage(char *argv)
 {
@@ -263,6 +265,7 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaDeviceSynchronize());
 
     // make our world of hitables & the camera
+#if 0
     hitable **d_hitables;
     int num_hitables = 22 * 22 + 1 + 3;
     checkCudaErrors(
@@ -275,6 +278,49 @@ int main(int argc, char *argv[])
                            d_rand_state2);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
+#else
+    camera **d_camera;
+    checkCudaErrors(cudaMallocManaged((void **)&d_camera, sizeof(camera *)));
+    *d_camera = new camera(the_scene->camera.lookfrom, the_scene->camera.lookat,
+                           the_scene->camera.vup, the_scene->camera.vfov,
+                           float(image_width) / float(image_height),
+                           the_scene->camera.aperture, the_scene->camera.focus);
+
+    material **d_materials;
+    int num_materials = the_scene->materials.size();
+    checkCudaErrors(cudaMallocManaged((void **)&d_materials,
+                                      num_materials * sizeof(material *)));
+    int i = 0;
+    for (auto m : the_scene->materials) {
+        if (m->type == LAMBERTIAN) {
+            d_materials[i++] = new lambertian(m->mat.lambertian.albedo);
+        }
+        else if (m->type == METAL) {
+            d_materials[i++] = new metal(m->mat.metal.albedo, m->mat.metal.fuzz);
+        }
+        else if (m->type == DIELECTRIC) {
+            d_materials[i++] = new dielectric(m->mat.dielectric.ref_idx);
+        }
+        else {
+            std::cerr << "Material not found: " << m->type << std::endl;
+            std::exit(5);
+        }
+    }
+
+    hitable **d_hitables;
+    int num_hitables = the_scene->spheres.size();
+    checkCudaErrors(cudaMallocManaged((void **)&d_hitables,
+                                      num_hitables * sizeof(hitable *)));
+    i = 0;
+    for (auto s : the_scene->spheres) {
+        d_hitables[i++] =
+            new sphere(s->center, s->radius, d_materials[s->material_index]);
+    }
+
+    hitable **d_world;
+    checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hitable *)));
+    *d_world = new hitable_list(d_hitables, num_hitables);
+#endif
 
     // Prefetch the FB to the GPU
     int device = -1;
@@ -320,7 +366,10 @@ int main(int argc, char *argv[])
 
     // clean up
     checkCudaErrors(cudaDeviceSynchronize());
+#if 0
     free_world<<<1, 1>>>(d_hitables, d_world, d_camera);
+#else
+#endif
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaFree(d_camera));
     checkCudaErrors(cudaFree(d_world));
@@ -329,7 +378,7 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaFree(d_rand_state2));
     checkCudaErrors(cudaFree(fb));
 
-    if(the_scene) {
+    if (the_scene) {
         delete the_scene;
     }
 
