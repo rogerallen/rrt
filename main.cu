@@ -2,6 +2,7 @@
 #include "hitable_list.h"
 #include "material.h"
 #include "ray.h"
+#include "scene.h"
 #include "sphere.h"
 #include "vec3.h"
 #include <assert.h>
@@ -169,6 +170,7 @@ void usage(char *argv)
 {
     std::cerr << "Unexpected argument: " << argv << "\n\n";
     std::cerr << "Usage: rrt [options]\n";
+    std::cerr << "  -i file.txt         : input scene file\n";
     std::cerr << "  -w <width>          : output image width.  Default: 1200\n";
     std::cerr << "  -h <height>         : output image height.  Default: 800\n";
     std::cerr << "  -s <samples>        : number of samples per pixel.  "
@@ -188,6 +190,8 @@ int main(int argc, char *argv[])
     int num_samples = 10;
     int num_threads_x = 8;
     int num_threads_y = 8;
+    scene *the_scene = nullptr;
+
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
             if (argv[i][1] == 'w') {
@@ -209,6 +213,9 @@ int main(int argc, char *argv[])
                 else {
                     usage(argv[i]);
                 }
+            }
+            else if (argv[i][1] == 'i') {
+                the_scene = new scene(argv[++i]);
             }
             else {
                 usage(argv[i]);
@@ -317,6 +324,10 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaFree(d_rand_state));
     checkCudaErrors(cudaFree(d_rand_state2));
     checkCudaErrors(cudaFree(fb));
+
+    if(the_scene) {
+        delete the_scene;
+    }
 
     cudaDeviceReset();
 }

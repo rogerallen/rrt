@@ -8,7 +8,7 @@ NVCC_DBG       =
 NVCCFLAGS      = $(NVCC_DBG) -m64 -lineinfo
 
 SRCS = main.cu
-INCS = vec3.h ray.h hitable.h hitable_list.h sphere.h camera.h material.h
+INCS = vec3.h ray.h hitable.h hitable_list.h sphere.h camera.h material.h scene.h
 
 # default run args
 RUNARGS ?= -w 1200 -h 800 -s 100 -tx 8 -ty 8

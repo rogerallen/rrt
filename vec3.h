@@ -23,6 +23,8 @@ public:
     __host__ __device__ inline float operator[](int i) const { return e[i]; }
     __host__ __device__ inline float& operator[](int i) { return e[i]; };
 
+    __host__ __device__ void print();
+
     __host__ __device__ inline vec3& operator+=(const vec3 &v2);
     __host__ __device__ inline vec3& operator-=(const vec3 &v2);
     __host__ __device__ inline vec3& operator*=(const vec3 &v2);
@@ -48,6 +50,10 @@ inline std::istream& operator>>(std::istream &is, vec3 &t) {
 inline std::ostream& operator<<(std::ostream &os, const vec3 &t) {
     os << t.e[0] << " " << t.e[1] << " " << t.e[2];
     return os;
+}
+
+__host__ __device__ void vec3::print() {
+    printf("%10.5f %10.5f %10.5f", e[0], e[1], e[2]);
 }
 
 __host__ __device__ inline void vec3::make_unit_vector() {

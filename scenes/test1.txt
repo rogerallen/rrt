@@ -1,0 +1,5 @@
+# camera lookfrom lookat vup    vfov  aperture focus 
+camera   13 2 3   0 0 0  0 1 0  30.0  0.1      10.0
+
+# sphere radius x y z     r g b
+sphere 100    150 50 0  0 0 0
