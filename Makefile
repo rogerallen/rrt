@@ -11,7 +11,7 @@ SRCS = main.cu
 INCS = vec3.h ray.h hitable.h hitable_list.h sphere.h camera.h material.h
 
 # default run args
-RUNARGS ?= 1200 800 100 8 8
+RUNARGS ?= -w 1200 -h 800 -s 100 -tx 8 -ty 8
 
 # gp100  pascal volta turing ga100 ampere
 # sm_60  sm_61  sm_70 sm_75  sm_80 sm_86
