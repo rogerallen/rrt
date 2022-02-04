@@ -42,6 +42,7 @@ __device__ vec3 reflect(const vec3& v, const vec3& n) {
 class material  {
     public:
         __device__ virtual bool scatter(const ray& r_in, const hit_record& rec, vec3& attenuation, ray& scattered, curandState *local_rand_state) const = 0;
+        __device__ virtual void print(int i) const = 0;
 };
 
 class lambertian : public material {
@@ -52,6 +53,11 @@ class lambertian : public material {
              scattered = ray(rec.p, target-rec.p);
              attenuation = albedo;
              return true;
+        }
+        __device__ virtual void print(int i) const {
+            printf("material m%d lambertian ", i);
+            albedo.print();
+            printf("\n");
         }
 
         vec3 albedo;
@@ -66,6 +72,12 @@ class metal : public material {
             attenuation = albedo;
             return (dot(scattered.direction(), rec.normal) > 0.0f);
         }
+        __device__ virtual void print(int i) const {
+            printf("material m%d metal ", i);
+            albedo.print();
+            printf(" %f\n", fuzz);
+        }
+        
         vec3 albedo;
         float fuzz;
 };
@@ -105,6 +117,9 @@ public:
         else
             scattered = ray(rec.p, refracted);
         return true;
+    }
+    __device__ virtual void print(int i) const {
+        printf("material m%d dielectric %f\n", i, ref_idx);
     }
 
     float ref_idx;

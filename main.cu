@@ -106,13 +106,13 @@ __global__ void
 
 #define RND (curand_uniform(&local_rand_state))
 
-__global__ void create_world(hitable **d_list, hitable **d_world,
+__global__ void create_world(hitable **d_hitables, hitable **d_world,
                              camera **d_camera, int image_width,
                              int image_height, curandState *rand_state)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
         curandState local_rand_state = *rand_state;
-        d_list[0] = new sphere(vec3(0, -1000.0, -1), 1000,
+        d_hitables[0] = new sphere(vec3(0, -1000.0, -1), 1000,
                                new lambertian(vec3(0.5, 0.5, 0.5)));
         int i = 1;
         for (int a = -11; a < 11; a++) {
@@ -120,29 +120,33 @@ __global__ void create_world(hitable **d_list, hitable **d_world,
                 float choose_mat = RND;
                 vec3 center(a + RND, 0.2, b + RND);
                 if (choose_mat < 0.8f) {
-                    d_list[i++] = new sphere(
+                    d_hitables[i++] = new sphere(
                         center, 0.2,
                         new lambertian(vec3(RND * RND, RND * RND, RND * RND)));
                 }
                 else if (choose_mat < 0.95f) {
-                    d_list[i++] = new sphere(
+                    d_hitables[i++] = new sphere(
                         center, 0.2,
                         new metal(vec3(0.5f * (1.0f + RND), 0.5f * (1.0f + RND),
                                        0.5f * (1.0f + RND)),
                                   0.5f * RND));
                 }
                 else {
-                    d_list[i++] = new sphere(center, 0.2, new dielectric(1.5));
+                    d_hitables[i++] = new sphere(center, 0.2, new dielectric(1.5));
                 }
             }
         }
-        d_list[i++] = new sphere(vec3(0, 1, 0), 1.0, new dielectric(1.5));
-        d_list[i++] = new sphere(vec3(-4, 1, 0), 1.0,
+        d_hitables[i++] = new sphere(vec3(0, 1, 0), 1.0, new dielectric(1.5));
+        d_hitables[i++] = new sphere(vec3(-4, 1, 0), 1.0,
                                  new lambertian(vec3(0.4, 0.2, 0.1)));
-        d_list[i++] =
+        d_hitables[i++] =
             new sphere(vec3(4, 1, 0), 1.0, new metal(vec3(0.7, 0.6, 0.5), 0.0));
         *rand_state = local_rand_state;
-        *d_world = new hitable_list(d_list, 22 * 22 + 1 + 3);
+        *d_world = new hitable_list(d_hitables, 22 * 22 + 1 + 3);
+
+        for(int j = 0; j < i; j++) {
+            d_hitables[j]->print(j);
+        }
 
         vec3 lookfrom(13, 2, 3);
         vec3 lookat(0, 0, 0);
@@ -155,12 +159,12 @@ __global__ void create_world(hitable **d_list, hitable **d_world,
     }
 }
 
-__global__ void free_world(hitable **d_list, hitable **d_world,
+__global__ void free_world(hitable **d_hitables, hitable **d_world,
                            camera **d_camera)
 {
     for (int i = 0; i < 22 * 22 + 1 + 3; i++) {
-        delete ((sphere *)d_list[i])->mat_ptr;
-        delete d_list[i];
+        delete ((sphere *)d_hitables[i])->mat_ptr;
+        delete d_hitables[i];
     }
     delete *d_world;
     delete *d_camera;
@@ -259,15 +263,15 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaDeviceSynchronize());
 
     // make our world of hitables & the camera
-    hitable **d_list;
+    hitable **d_hitables;
     int num_hitables = 22 * 22 + 1 + 3;
     checkCudaErrors(
-        cudaMalloc((void **)&d_list, num_hitables * sizeof(hitable *)));
+        cudaMalloc((void **)&d_hitables, num_hitables * sizeof(hitable *)));
     hitable **d_world;
     checkCudaErrors(cudaMalloc((void **)&d_world, sizeof(hitable *)));
     camera **d_camera;
     checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
-    create_world<<<1, 1>>>(d_list, d_world, d_camera, image_width, image_height,
+    create_world<<<1, 1>>>(d_hitables, d_world, d_camera, image_width, image_height,
                            d_rand_state2);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
@@ -316,11 +320,11 @@ int main(int argc, char *argv[])
 
     // clean up
     checkCudaErrors(cudaDeviceSynchronize());
-    free_world<<<1, 1>>>(d_list, d_world, d_camera);
+    free_world<<<1, 1>>>(d_hitables, d_world, d_camera);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaFree(d_camera));
     checkCudaErrors(cudaFree(d_world));
-    checkCudaErrors(cudaFree(d_list));
+    checkCudaErrors(cudaFree(d_hitables));
     checkCudaErrors(cudaFree(d_rand_state));
     checkCudaErrors(cudaFree(d_rand_state2));
     checkCudaErrors(cudaFree(fb));

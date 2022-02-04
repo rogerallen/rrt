@@ -20,7 +20,7 @@ struct scene_camera {
 struct scene_sphere {
     vec3 center;
     double radius;
-    std::string material_name;
+    int material_index;
 };
 
 enum scene_material_t { LAMBERTIAN, METAL, DIELECTRIC };
@@ -128,8 +128,10 @@ class scene {
                               << std::endl;
                     exit(3);
                 }
-                materials.insert(std::pair<std::string, scene_material *>(
-                    name_str, new_material));
+                int next_index = materials.size();
+                materials.push_back(new_material);
+                material_names_to_index.insert(
+                    std::pair<std::string, int>(name_str, next_index));
             }
             else if (line.find("sphere") == 0) {
                 std::istringstream iss(line);
@@ -145,24 +147,26 @@ class scene {
                 iss >> mat_str;
 
                 scene_sphere *new_sphere = new scene_sphere;
-                
-                new_sphere->center = vec3(std::stod(cx_str),std::stod(cy_str),std::stod(cz_str));
+
+                new_sphere->center = vec3(std::stod(cx_str), std::stod(cy_str),
+                                          std::stod(cz_str));
                 new_sphere->radius = std::stod(r_str);
-                new_sphere->material_name = mat_str;
+                new_sphere->material_index = material_names_to_index[mat_str];
                 spheres.push_back(new_sphere);
             }
         }
         fl.close();
         // check scene
-        if(!got_camera) {
+        if (!got_camera) {
             std::cerr << "ERROR: Scene did not have a camera." << std::endl;
             std::exit(4);
         }
-        if(materials.size() == 0) {
-            std::cerr << "ERROR: Scene did not have any materials." << std::endl;
+        if (materials.size() == 0) {
+            std::cerr << "ERROR: Scene did not have any materials."
+                      << std::endl;
             std::exit(4);
         }
-        if(spheres.size() == 0) {
+        if (spheres.size() == 0) {
             std::cerr << "ERROR: Scene did not have any spheres." << std::endl;
             std::exit(4);
         }
@@ -170,9 +174,11 @@ class scene {
         std::cerr << "material count:  " << materials.size() << "\n";
         std::cerr << "sphere count:    " << spheres.size() << std::endl;
     }
+    // FIXME -- add a destructor
 
     scene_camera camera;
-    std::map<std::string, scene_material *> materials;
+    std::map<std::string, int> material_names_to_index;
+    std::vector<scene_material *> materials;
     std::vector<scene_sphere *> spheres;
 };
 

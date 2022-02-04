@@ -8,6 +8,7 @@ class sphere: public hitable  {
         __device__ sphere() {}
         __device__ sphere(vec3 cen, float r, material *m) : center(cen), radius(r), mat_ptr(m)  {};
         __device__ virtual bool hit(const ray& r, float tmin, float tmax, hit_record& rec) const;
+        __device__ virtual void print(int i) const;
         vec3 center;
         float radius;
         material *mat_ptr;
@@ -40,5 +41,11 @@ __device__ bool sphere::hit(const ray& r, float t_min, float t_max, hit_record& 
     return false;
 }
 
+__device__ void sphere::print(int i) const {
+    mat_ptr->print(i);
+    printf("sphere ");
+    center.print();
+    printf(" %f m%d\n", radius, i);
+}
 
 #endif
