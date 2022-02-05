@@ -5,7 +5,8 @@
 - [x] Copy from raytracinginoneweekendincude nvidia branch
 - [x] add prefetch to/from GPU
 - [x] real commandline options
-- [ ] scene loading
-- [ ] shared-memory sample reduction
+- [x] scene loading
 - [ ] PNG output
+- [ ] shared-memory sample reduction
 - [ ] double precision calculations
+- [ ] retry using vec3 in scene.h?
