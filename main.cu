@@ -363,7 +363,7 @@ int main(int argc, char *argv[])
     int num_spheres = the_scene->spheres.size();
     checkCudaErrors(cudaMallocManaged((void **)&d_scene_spheres,
                                       num_spheres * sizeof(scene_sphere)));
-    for (int i = 0; i < num_materials; ++i) {
+    for (int i = 0; i < num_spheres; ++i) {
         d_scene_spheres[i] = *(the_scene->spheres[i]);
     }
 
