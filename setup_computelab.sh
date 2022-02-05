@@ -1,6 +1,8 @@
 # usage:
-#   source computelab_setup.sh
+#   source setup_computelab.sh
 #
+
+# setup PATH & LD_LIBRARY_PATH
 export CUDA_VERSION=11.5
 export CUDA_HOME=/home/scratch.svc_compute_arch/release/cuda_toolkit/r$CUDA_VERSION/x86_64/latest
 export NSIGHT_SYSTEMS_HOME=/home/scratch.svc_compute_arch/release/nsightSystems/x86_64/rel/2021.5.1.118/bin
@@ -13,3 +15,8 @@ export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$CUDA_HOME/nvvm/lib64:$LD_LIBRARY_PATH
 export TMPDIR=/tmp/$USER
 rm -rf $TMPDIR
 mkdir -p $TMPDIR
+
+# which GPU are you compiling for?
+# gp100  pascal volta turing ga100 ampere
+# sm_60  sm_61  sm_70 sm_75  sm_80 sm_86
+export NVCC_GENCODE="-arch sm_80"
