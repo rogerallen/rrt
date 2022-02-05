@@ -10,3 +10,8 @@
 - [ ] shared-memory sample reduction
 - [ ] double precision calculations
 - [ ] retry using vec3 in scene.h?
+
+## Status
+
+Computelab: everything works
+Rainbow: nsys crashes, ncu works
