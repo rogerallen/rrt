@@ -1,29 +1,29 @@
 HOST_COMPILER  = g++
 NVCC           = nvcc -ccbin $(HOST_COMPILER)
 
-# select one of these for Debug vs. Release
+# select one of these for Debug vs. Release 
 #NVCC_DBG       = -g -G
-NVCC_DBG       =
+NVCC_DBG       = -lineinfo
 
-NVCCFLAGS      = $(NVCC_DBG) -m64 -lineinfo
+NVCCFLAGS      = $(NVCC_DBG) -m64 
 
 SRCS = main.cu
 INCS = vec3.h ray.h hitable.h hitable_list.h sphere.h camera.h material.h scene.h
 
 # default run args
-RUNARGS ?= -w 1200 -h 800 -s 100 -tx 8 -ty 8
+RUNARGS ?= -i scenes/test1.txt -s 100
 
 # gp100  pascal volta turing ga100 ampere
 # sm_60  sm_61  sm_70 sm_75  sm_80 sm_86
 GENCODE_FLAGS = -arch sm_80
 
 # default
-all: out.ppm
+all: scenes/test1.ppm
 
 rrt: $(SRCS) $(INCS)
 	$(NVCC) $(NVCCFLAGS) $(GENCODE_FLAGS) -o $@ main.cu
 
-out.ppm: rrt
+scenes/test1.ppm: rrt
 	rm -f $@
 	./rrt $(RUNARGS) > $@
 

@@ -170,6 +170,71 @@ __global__ void free_world(hitable **d_hitables, hitable **d_world,
     delete *d_world;
     delete *d_camera;
 }
+#else
+__global__ void create_world(hitable **d_world, scene_camera *d_scene_camera,
+                             camera **d_camera, int num_materials,
+                             scene_material *d_scene_materials,
+                             material **d_materials, int num_spheres,
+                             scene_sphere *d_scene_spheres,
+                             hitable **d_hitables, int image_width,
+                             int image_height)
+{
+    if (threadIdx.x == 0 && blockIdx.x == 0) {
+
+        vec3 from =
+            vec3((*d_scene_camera).lookfrom_x, (*d_scene_camera).lookfrom_y,
+                 (*d_scene_camera).lookfrom_z);
+        *d_camera = new camera(
+            from,
+            vec3(d_scene_camera->lookat_x, d_scene_camera->lookat_y,
+                 d_scene_camera->lookat_z),
+            vec3(d_scene_camera->vup_x, d_scene_camera->vup_y,
+                 d_scene_camera->vup_z),
+            (float)d_scene_camera->vfov,
+            float(image_width) / float(image_height),
+            (float)d_scene_camera->aperture, (float)d_scene_camera->focus);
+
+        for (int i = 0; i < num_materials; ++i) {
+            scene_material *m = &(d_scene_materials[i]);
+            if (m->type == LAMBERTIAN) {
+                d_materials[i] = new lambertian(
+                    vec3(m->mat.lambertian.albedo_r, m->mat.lambertian.albedo_g,
+                         m->mat.lambertian.albedo_b));
+            }
+            else if (m->type == METAL) {
+                d_materials[i] =
+                    new metal(vec3(m->mat.metal.albedo_r, m->mat.metal.albedo_g,
+                                   m->mat.metal.albedo_b),
+                              m->mat.metal.fuzz);
+            }
+            else if (m->type == DIELECTRIC) {
+                d_materials[i] = new dielectric(m->mat.dielectric.ref_idx);
+            }
+        }
+
+        for (int i = 0; i < num_spheres; ++i) {
+            scene_sphere *s = &(d_scene_spheres[i]);
+            d_hitables[i] =
+                new sphere(vec3(s->center_x, s->center_y, s->center_z),
+                           s->radius, d_materials[s->material_index]);
+        }
+
+        *d_world = new hitable_list(d_hitables, num_spheres);
+    }
+}
+__global__ void free_world(int num_materials, material **d_materials,
+                           int num_spheres, hitable **d_hitables,
+                           hitable **d_world, camera **d_camera)
+{
+    for (int i = 0; i < num_materials; i++) {
+        delete d_materials[i];
+    }
+    for (int i = 0; i < num_spheres; i++) {
+        delete d_hitables[i];
+    }
+    delete *d_world;
+    delete *d_camera;
+}
 #endif
 
 void usage(char *argv)
@@ -279,47 +344,48 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 #else
-    camera **d_camera;
-    checkCudaErrors(cudaMallocManaged((void **)&d_camera, sizeof(camera *)));
-    *d_camera = new camera(the_scene->camera.lookfrom, the_scene->camera.lookat,
-                           the_scene->camera.vup, the_scene->camera.vfov,
-                           float(image_width) / float(image_height),
-                           the_scene->camera.aperture, the_scene->camera.focus);
+    // create & populate scene data that create_world with use to make the
+    // scene.
+    scene_camera *d_scene_camera;
+    checkCudaErrors(
+        cudaMallocManaged((void **)&d_scene_camera, sizeof(scene_camera)));
+    *d_scene_camera = the_scene->camera;
 
-    material **d_materials;
+    scene_material *d_scene_materials;
     int num_materials = the_scene->materials.size();
-    checkCudaErrors(cudaMallocManaged((void **)&d_materials,
-                                      num_materials * sizeof(material *)));
-    int i = 0;
-    for (auto m : the_scene->materials) {
-        if (m->type == LAMBERTIAN) {
-            d_materials[i++] = new lambertian(m->mat.lambertian.albedo);
-        }
-        else if (m->type == METAL) {
-            d_materials[i++] = new metal(m->mat.metal.albedo, m->mat.metal.fuzz);
-        }
-        else if (m->type == DIELECTRIC) {
-            d_materials[i++] = new dielectric(m->mat.dielectric.ref_idx);
-        }
-        else {
-            std::cerr << "Material not found: " << m->type << std::endl;
-            std::exit(5);
-        }
+    checkCudaErrors(cudaMallocManaged((void **)&d_scene_materials,
+                                      num_materials * sizeof(scene_material)));
+    for (int i = 0; i < num_materials; ++i) {
+        d_scene_materials[i] = *(the_scene->materials[i]);
     }
 
+    scene_sphere *d_scene_spheres;
+    int num_spheres = the_scene->spheres.size();
+    checkCudaErrors(cudaMallocManaged((void **)&d_scene_spheres,
+                                      num_spheres * sizeof(scene_sphere)));
+    for (int i = 0; i < num_materials; ++i) {
+        d_scene_spheres[i] = *(the_scene->spheres[i]);
+    }
+
+    // now create the data that will contain the world.  create_world populates
+    // these
+    camera **d_camera;
+    checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
+    material **d_materials;
+    checkCudaErrors(
+        cudaMalloc((void **)&d_materials, num_materials * sizeof(material *)));
     hitable **d_hitables;
-    int num_hitables = the_scene->spheres.size();
-    checkCudaErrors(cudaMallocManaged((void **)&d_hitables,
-                                      num_hitables * sizeof(hitable *)));
-    i = 0;
-    for (auto s : the_scene->spheres) {
-        d_hitables[i++] =
-            new sphere(s->center, s->radius, d_materials[s->material_index]);
-    }
-
+    checkCudaErrors(
+        cudaMalloc((void **)&d_hitables, num_spheres * sizeof(hitable *)));
     hitable **d_world;
     checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hitable *)));
-    *d_world = new hitable_list(d_hitables, num_hitables);
+
+    create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials,
+                           d_scene_materials, d_materials, num_spheres,
+                           d_scene_spheres, d_hitables, image_width,
+                           image_height);
+    checkCudaErrors(cudaGetLastError());
+    checkCudaErrors(cudaDeviceSynchronize());
 #endif
 
     // Prefetch the FB to the GPU
@@ -369,11 +435,14 @@ int main(int argc, char *argv[])
 #if 0
     free_world<<<1, 1>>>(d_hitables, d_world, d_camera);
 #else
+    free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, d_hitables,
+                         d_world, d_camera);
 #endif
     checkCudaErrors(cudaGetLastError());
-    checkCudaErrors(cudaFree(d_camera));
+    checkCudaErrors(cudaFree(d_scene_camera));
+    checkCudaErrors(cudaFree(d_scene_materials));
+    checkCudaErrors(cudaFree(d_scene_spheres));
     checkCudaErrors(cudaFree(d_world));
-    checkCudaErrors(cudaFree(d_hitables));
     checkCudaErrors(cudaFree(d_rand_state));
     checkCudaErrors(cudaFree(d_rand_state2));
     checkCudaErrors(cudaFree(fb));
