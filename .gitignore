@@ -1,6 +1,7 @@
 .vscode/
 rrt
 *.ppm
+*.png
 *.log
 *.nsys-rep
 *.ncu-rep

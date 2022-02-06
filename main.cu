@@ -11,6 +11,9 @@
 #include <iostream>
 #include <time.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #ifdef COMPILING_FOR_WSL
 #define SUPPORTS_CUDA_MEM_PREFETCH_ASYNC 0
 #else
@@ -20,12 +23,11 @@
 // limited version of checkCudaErrors from helper_cuda.h in CUDA examples
 #define checkCudaErrors(val) check_cuda((val), #val, __FILE__, __LINE__)
 
-void check_cuda(cudaError_t result, char const *const func,
-                const char *const file, int const line)
+void check_cuda(cudaError_t result, char const *const func, const char *const file, int const line)
 {
     if (result) {
-        std::cerr << "CUDA error = " << static_cast<unsigned int>(result)
-                  << " at " << file << ":" << line << " '" << func << "' \n";
+        std::cerr << "CUDA error = " << static_cast<unsigned int>(result) << " at " << file << ":" << line << " '"
+                  << func << "' \n";
         // Make sure we call CUDA Device Reset before exiting
         cudaDeviceReset();
         exit(99);
@@ -36,8 +38,7 @@ void check_cuda(cudaError_t result, char const *const func,
 // it was blowing up the stack, so we have to turn this into a
 // limited-depth loop instead.  Later code in the book limits to a max
 // depth of 50, so we adapt this a few chapters early on the GPU.
-__device__ vec3 color(const ray &r, hitable **world,
-                      curandState *local_rand_state)
+__device__ vec3 color(const ray &r, hitable **world, curandState *local_rand_state)
 {
     ray cur_ray = r;
     vec3 cur_attenuation = vec3(1.0, 1.0, 1.0);
@@ -46,8 +47,7 @@ __device__ vec3 color(const ray &r, hitable **world,
         if ((*world)->hit(cur_ray, 0.001f, FLT_MAX, rec)) {
             ray scattered;
             vec3 attenuation;
-            if (rec.mat_ptr->scatter(cur_ray, rec, attenuation, scattered,
-                                     local_rand_state)) {
+            if (rec.mat_ptr->scatter(cur_ray, rec, attenuation, scattered, local_rand_state)) {
                 cur_attenuation *= attenuation;
                 cur_ray = scattered;
             }
@@ -85,10 +85,8 @@ __global__ void render_init(int max_x, int max_y, curandState *rand_state)
     curand_init(1984 + pixel_index, 0, 0, &rand_state[pixel_index]);
 }
 
-__global__ void
-    __launch_bounds__(64, 12) // maxThreadsPerBlock, minBlocksPerMultiprocessor)
-    render(vec3 *fb, int max_x, int max_y, int num_samples, camera **cam,
-           hitable **world, curandState *rand_state)
+__global__ void __launch_bounds__(64, 12) // maxThreadsPerBlock, minBlocksPerMultiprocessor)
+    render(vec3 *fb, int max_x, int max_y, int num_samples, camera **cam, hitable **world, curandState *rand_state)
 {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
@@ -177,41 +175,27 @@ __global__ void free_world(hitable **d_hitables, hitable **d_world,
     delete *d_camera;
 }
 #else
-__global__ void create_world(hitable **d_world, scene_camera *d_scene_camera,
-                             camera **d_camera, int num_materials,
-                             scene_material *d_scene_materials,
-                             material **d_materials, int num_spheres,
-                             scene_sphere *d_scene_spheres,
-                             hitable **d_hitables, int image_width,
-                             int image_height)
+__global__ void create_world(hitable **d_world, scene_camera *d_scene_camera, camera **d_camera, int num_materials,
+                             scene_material *d_scene_materials, material **d_materials, int num_spheres,
+                             scene_sphere *d_scene_spheres, hitable **d_hitables, int image_width, int image_height)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
 
-        vec3 from =
-            vec3((*d_scene_camera).lookfrom_x, (*d_scene_camera).lookfrom_y,
-                 (*d_scene_camera).lookfrom_z);
-        *d_camera = new camera(
-            from,
-            vec3(d_scene_camera->lookat_x, d_scene_camera->lookat_y,
-                 d_scene_camera->lookat_z),
-            vec3(d_scene_camera->vup_x, d_scene_camera->vup_y,
-                 d_scene_camera->vup_z),
-            (float)d_scene_camera->vfov,
-            float(image_width) / float(image_height),
-            (float)d_scene_camera->aperture, (float)d_scene_camera->focus);
+        vec3 from = vec3((*d_scene_camera).lookfrom_x, (*d_scene_camera).lookfrom_y, (*d_scene_camera).lookfrom_z);
+        *d_camera = new camera(from, vec3(d_scene_camera->lookat_x, d_scene_camera->lookat_y, d_scene_camera->lookat_z),
+                               vec3(d_scene_camera->vup_x, d_scene_camera->vup_y, d_scene_camera->vup_z),
+                               (float)d_scene_camera->vfov, float(image_width) / float(image_height),
+                               (float)d_scene_camera->aperture, (float)d_scene_camera->focus);
 
         for (int i = 0; i < num_materials; ++i) {
             scene_material *m = &(d_scene_materials[i]);
             if (m->type == LAMBERTIAN) {
                 d_materials[i] = new lambertian(
-                    vec3(m->mat.lambertian.albedo_r, m->mat.lambertian.albedo_g,
-                         m->mat.lambertian.albedo_b));
+                    vec3(m->mat.lambertian.albedo_r, m->mat.lambertian.albedo_g, m->mat.lambertian.albedo_b));
             }
             else if (m->type == METAL) {
-                d_materials[i] =
-                    new metal(vec3(m->mat.metal.albedo_r, m->mat.metal.albedo_g,
-                                   m->mat.metal.albedo_b),
-                              m->mat.metal.fuzz);
+                d_materials[i] = new metal(vec3(m->mat.metal.albedo_r, m->mat.metal.albedo_g, m->mat.metal.albedo_b),
+                                           m->mat.metal.fuzz);
             }
             else if (m->type == DIELECTRIC) {
                 d_materials[i] = new dielectric(m->mat.dielectric.ref_idx);
@@ -221,15 +205,13 @@ __global__ void create_world(hitable **d_world, scene_camera *d_scene_camera,
         for (int i = 0; i < num_spheres; ++i) {
             scene_sphere *s = &(d_scene_spheres[i]);
             d_hitables[i] =
-                new sphere(vec3(s->center_x, s->center_y, s->center_z),
-                           s->radius, d_materials[s->material_index]);
+                new sphere(vec3(s->center_x, s->center_y, s->center_z), s->radius, d_materials[s->material_index]);
         }
 
         *d_world = new hitable_list(d_hitables, num_spheres);
     }
 }
-__global__ void free_world(int num_materials, material **d_materials,
-                           int num_spheres, hitable **d_hitables,
+__global__ void free_world(int num_materials, material **d_materials, int num_spheres, hitable **d_hitables,
                            hitable **d_world, camera **d_camera)
 {
     for (int i = 0; i < num_materials; i++) {
@@ -248,14 +230,12 @@ void usage(char *argv)
     std::cerr << "Unexpected argument: " << argv << "\n\n";
     std::cerr << "Usage: rrt [options]\n";
     std::cerr << "  -i file.txt         : input scene file\n";
-    std::cerr << "  -w <width>          : output image width.  Default: 1200\n";
-    std::cerr << "  -h <height>         : output image height.  Default: 800\n";
-    std::cerr << "  -s <samples>        : number of samples per pixel.  "
-                 "Default: 10\n";
-    std::cerr << "  -tx <num_threads_x> : number of threads per block in x.  "
-                 "Default: 8\n";
-    std::cerr << "  -ty <num_threads_y> : number of threads per block in y.  "
-                 "Default: 8\n";
+    std::cerr << "  -o file.png         : output raytraced PNG image (default is PPM to stdout)\n";
+    std::cerr << "  -w <width>          : output image width. (default = 1200)\n";
+    std::cerr << "  -h <height>         : output image height. (800)\n";
+    std::cerr << "  -s <samples>        : number of samples per pixel. (10)\n";
+    std::cerr << "  -tx <num_threads_x> : number of threads per block in x. (8)\n";
+    std::cerr << "  -ty <num_threads_y> : number of threads per block in y. (8)\n";
     std::exit(1);
 }
 
@@ -268,6 +248,7 @@ int main(int argc, char *argv[])
     int num_threads_x = 8;
     int num_threads_y = 8;
     scene *the_scene = nullptr;
+    char *png_filename = nullptr;
 
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
@@ -294,6 +275,9 @@ int main(int argc, char *argv[])
             else if (argv[i][1] == 'i') {
                 the_scene = new scene(argv[++i]);
             }
+            else if (argv[i][1] == 'o') {
+                png_filename = argv[++i];
+            }
             else {
                 usage(argv[i]);
             }
@@ -309,11 +293,10 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaRuntimeGetVersion(&cuda_runtime_version));
 
     std::cerr << "CUDA Runtime Version " << cuda_runtime_version << "\n";
-    std::cerr << "Rendering a " << image_width << "x" << image_height
-              << " image with " << num_samples << " samples per pixel ";
-    std::cerr << "in " << num_blocks_x << "x" << num_blocks_y << " = "
-              << num_blocks_x * num_blocks_y << " blocks of " << num_threads_x
-              << "x" << num_threads_y << " threads each.\n";
+    std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << num_samples
+              << " samples per pixel ";
+    std::cerr << "in " << num_blocks_x << "x" << num_blocks_y << " = " << num_blocks_x * num_blocks_y << " blocks of "
+              << num_threads_x << "x" << num_threads_y << " threads each.\n";
 
     int num_pixels = image_width * image_height;
     size_t fb_size = num_pixels * sizeof(vec3);
@@ -324,11 +307,9 @@ int main(int argc, char *argv[])
 
     // allocate random state
     curandState *d_rand_state;
-    checkCudaErrors(
-        cudaMalloc((void **)&d_rand_state, num_pixels * sizeof(curandState)));
+    checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * sizeof(curandState)));
     curandState *d_rand_state2;
-    checkCudaErrors(
-        cudaMalloc((void **)&d_rand_state2, 1 * sizeof(curandState)));
+    checkCudaErrors(cudaMalloc((void **)&d_rand_state2, 1 * sizeof(curandState)));
 
     // we need that 2nd random state to be initialized for the world creation
     rand_init<<<1, 1>>>(d_rand_state2);
@@ -353,22 +334,19 @@ int main(int argc, char *argv[])
     // create & populate scene data that create_world with use to make the
     // scene.
     scene_camera *d_scene_camera;
-    checkCudaErrors(
-        cudaMallocManaged((void **)&d_scene_camera, sizeof(scene_camera)));
+    checkCudaErrors(cudaMallocManaged((void **)&d_scene_camera, sizeof(scene_camera)));
     *d_scene_camera = the_scene->camera;
 
     scene_material *d_scene_materials;
     int num_materials = the_scene->materials.size();
-    checkCudaErrors(cudaMallocManaged((void **)&d_scene_materials,
-                                      num_materials * sizeof(scene_material)));
+    checkCudaErrors(cudaMallocManaged((void **)&d_scene_materials, num_materials * sizeof(scene_material)));
     for (int i = 0; i < num_materials; ++i) {
         d_scene_materials[i] = *(the_scene->materials[i]);
     }
 
     scene_sphere *d_scene_spheres;
     int num_spheres = the_scene->spheres.size();
-    checkCudaErrors(cudaMallocManaged((void **)&d_scene_spheres,
-                                      num_spheres * sizeof(scene_sphere)));
+    checkCudaErrors(cudaMallocManaged((void **)&d_scene_spheres, num_spheres * sizeof(scene_sphere)));
     for (int i = 0; i < num_spheres; ++i) {
         d_scene_spheres[i] = *(the_scene->spheres[i]);
     }
@@ -378,18 +356,14 @@ int main(int argc, char *argv[])
     camera **d_camera;
     checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
     material **d_materials;
-    checkCudaErrors(
-        cudaMalloc((void **)&d_materials, num_materials * sizeof(material *)));
+    checkCudaErrors(cudaMalloc((void **)&d_materials, num_materials * sizeof(material *)));
     hitable **d_hitables;
-    checkCudaErrors(
-        cudaMalloc((void **)&d_hitables, num_spheres * sizeof(hitable *)));
+    checkCudaErrors(cudaMalloc((void **)&d_hitables, num_spheres * sizeof(hitable *)));
     hitable **d_world;
     checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hitable *)));
 
-    create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials,
-                           d_scene_materials, d_materials, num_spheres,
-                           d_scene_spheres, d_hitables, image_width,
-                           image_height);
+    create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,
+                           num_spheres, d_scene_spheres, d_hitables, image_width, image_height);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 #endif
@@ -411,17 +385,15 @@ int main(int argc, char *argv[])
     render_init<<<blocks, threads>>>(image_width, image_height, d_rand_state);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
-    render<<<blocks, threads>>>(fb, image_width, image_height, num_samples,
-                                d_camera, d_world, d_rand_state);
+    render<<<blocks, threads>>>(fb, image_width, image_height, num_samples, d_camera, d_world, d_rand_state);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
     stop = clock();
     double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
     std::cerr << "took " << timer_seconds << " seconds.\n";
 
-    std::cerr << "stats:" << cuda_runtime_version << "," << image_width << ","
-              << image_height << "," << num_samples << "," << num_threads_x
-              << "," << num_threads_y << "," << timer_seconds << "\n";
+    std::cerr << "stats:" << cuda_runtime_version << "," << image_width << "," << image_height << "," << num_samples
+              << "," << num_threads_x << "," << num_threads_y << "," << timer_seconds << "\n";
 
 #if SUPPORTS_CUDA_MEM_PREFETCH_ASYNC == 1
     // Prefetch the FB back to the CPU
@@ -430,15 +402,34 @@ int main(int argc, char *argv[])
 #endif
 
     // Output FB as Image
-    std::cout << "P3\n" << image_width << " " << image_height << "\n255\n";
-    for (int j = image_height - 1; j >= 0; j--) {
-        for (int i = 0; i < image_width; i++) {
-            size_t pixel_index = j * image_width + i;
-            int ir = int(255.99 * fb[pixel_index].r());
-            int ig = int(255.99 * fb[pixel_index].g());
-            int ib = int(255.99 * fb[pixel_index].b());
-            std::cout << ir << " " << ig << " " << ib << "\n";
+    if (png_filename == nullptr) {
+        // default to PPM to stdout
+        std::cout << "P3\n" << image_width << " " << image_height << "\n255\n";
+        for (int j = image_height - 1; j >= 0; j--) {
+            for (int i = 0; i < image_width; i++) {
+                size_t pixel_index = j * image_width + i;
+                int ir = int(255.99 * fb[pixel_index].r());
+                int ig = int(255.99 * fb[pixel_index].g());
+                int ib = int(255.99 * fb[pixel_index].b());
+                std::cout << ir << " " << ig << " " << ib << "\n";
+            }
         }
+    }
+    else {
+        // write fb to png_filename
+        uint8_t *cpu_fb = new uint8_t[image_width * image_height * 3];
+        for (int j = image_height - 1, k = 0; j >= 0; j--, k++) {
+            for (int i = 0; i < image_width; i++) {
+                size_t fb_idx = j * image_width + i;
+                size_t cpu_fb_idx = k * image_width * 3 + i * 3;
+                cpu_fb[cpu_fb_idx + 0] = uint8_t(255.99 * fb[fb_idx].r());
+                cpu_fb[cpu_fb_idx + 1] = uint8_t(255.99 * fb[fb_idx].g());
+                cpu_fb[cpu_fb_idx + 2] = uint8_t(255.99 * fb[fb_idx].b());
+            }
+        }
+        stbi_write_png(png_filename, image_width, image_height, 3, (const void *)cpu_fb,
+                       image_width * 3 * sizeof(uint8_t));
+        delete[] cpu_fb;
     }
 
     // clean up
@@ -446,8 +437,7 @@ int main(int argc, char *argv[])
 #if 0
     free_world<<<1, 1>>>(d_hitables, d_world, d_camera);
 #else
-    free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, d_hitables,
-                         d_world, d_camera);
+    free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, d_hitables, d_world, d_camera);
 #endif
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaFree(d_scene_camera));
