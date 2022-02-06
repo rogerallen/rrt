@@ -8,8 +8,8 @@
 - [x] scene loading
 - [x] PNG output
 - [x] retry using vec3 in scene.h?
+- [x] double precision calculations
 - [ ] shared-memory sample reduction
-- [ ] double precision calculations
 
 ## Status
 

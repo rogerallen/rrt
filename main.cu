@@ -1,3 +1,4 @@
+// requires that you define FP_T as float or double
 #include "camera.h"
 #include "hitable_list.h"
 #include "material.h"
@@ -57,7 +58,7 @@ __device__ vec3 color(const ray &r, hitable **world, curandState *local_rand_sta
         }
         else {
             vec3 unit_direction = unit_vector(cur_ray.direction());
-            float t = 0.5f * (unit_direction.y() + 1.0f);
+            FP_T t = 0.5f * (unit_direction.y() + 1.0f);
             vec3 c = (1.0f - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
             return cur_attenuation * c;
         }
@@ -95,13 +96,13 @@ __global__ void __launch_bounds__(64, 12) // maxThreadsPerBlock, minBlocksPerMul
     curandState local_rand_state = rand_state[pixel_index];
     vec3 col(0, 0, 0);
     for (int s = 0; s < num_samples; s++) {
-        float u = float(i + curand_uniform(&local_rand_state)) / float(max_x);
-        float v = float(j + curand_uniform(&local_rand_state)) / float(max_y);
+        FP_T u = FP_T(i + curand_uniform(&local_rand_state)) / FP_T(max_x);
+        FP_T v = FP_T(j + curand_uniform(&local_rand_state)) / FP_T(max_y);
         ray r = (*cam)->get_ray(u, v, &local_rand_state);
         col += color(r, world, &local_rand_state);
     }
     rand_state[pixel_index] = local_rand_state;
-    col /= float(num_samples);
+    col /= FP_T(num_samples);
     col[0] = sqrt(col[0]);
     col[1] = sqrt(col[1]);
     col[2] = sqrt(col[2]);
@@ -182,8 +183,8 @@ __global__ void create_world(hitable **d_world, scene_camera *d_scene_camera, ca
     if (threadIdx.x == 0 && blockIdx.x == 0) {
 
         *d_camera = new camera(d_scene_camera->lookfrom, d_scene_camera->lookat, d_scene_camera->vup,
-                               (float)d_scene_camera->vfov, float(image_width) / float(image_height),
-                               (float)d_scene_camera->aperture, (float)d_scene_camera->focus);
+                               (FP_T)d_scene_camera->vfov, FP_T(image_width) / FP_T(image_height),
+                               (FP_T)d_scene_camera->aperture, (FP_T)d_scene_camera->focus);
 
         for (int i = 0; i < num_materials; ++i) {
             scene_material *m = &(d_scene_materials[i]);

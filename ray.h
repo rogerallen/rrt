@@ -12,7 +12,7 @@ class ray {
     }
     __device__ vec3 origin() const { return A; }
     __device__ vec3 direction() const { return B; }
-    __device__ vec3 point_at_parameter(float t) const { return A + t * B; }
+    __device__ vec3 point_at_parameter(FP_T t) const { return A + t * B; }
 
     vec3 A;
     vec3 B;

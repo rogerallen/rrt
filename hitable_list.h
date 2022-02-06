@@ -11,17 +11,17 @@ class hitable_list : public hitable {
         list = l;
         list_size = n;
     }
-    __device__ virtual bool hit(const ray &r, float tmin, float tmax, hit_record &rec) const;
+    __device__ virtual bool hit(const ray &r, FP_T tmin, FP_T tmax, hit_record &rec) const;
     __device__ virtual void print(int i) const;
     hitable **list;
     int list_size;
 };
 
-__device__ bool hitable_list::hit(const ray &r, float t_min, float t_max, hit_record &rec) const
+__device__ bool hitable_list::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec) const
 {
     hit_record temp_rec;
     bool hit_anything = false;
-    float closest_so_far = t_max;
+    FP_T closest_so_far = t_max;
     for (int i = 0; i < list_size; i++) {
         if (list[i]->hit(r, t_min, closest_so_far, temp_rec)) {
             hit_anything = true;

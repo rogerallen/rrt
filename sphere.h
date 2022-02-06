@@ -6,23 +6,23 @@
 class sphere : public hitable {
   public:
     __device__ sphere() {}
-    __device__ sphere(vec3 cen, float r, material *m) : center(cen), radius(r), mat_ptr(m){};
-    __device__ virtual bool hit(const ray &r, float tmin, float tmax, hit_record &rec) const;
+    __device__ sphere(vec3 cen, FP_T r, material *m) : center(cen), radius(r), mat_ptr(m){};
+    __device__ virtual bool hit(const ray &r, FP_T tmin, FP_T tmax, hit_record &rec) const;
     __device__ virtual void print(int i) const;
     vec3 center;
-    float radius;
+    FP_T radius;
     material *mat_ptr;
 };
 
-__device__ bool sphere::hit(const ray &r, float t_min, float t_max, hit_record &rec) const
+__device__ bool sphere::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec) const
 {
     vec3 oc = r.origin() - center;
-    float a = dot(r.direction(), r.direction());
-    float b = dot(oc, r.direction());
-    float c = dot(oc, oc) - radius * radius;
-    float discriminant = b * b - a * c;
+    FP_T a = dot(r.direction(), r.direction());
+    FP_T b = dot(oc, r.direction());
+    FP_T c = dot(oc, oc) - radius * radius;
+    FP_T discriminant = b * b - a * c;
     if (discriminant > 0) {
-        float temp = (-b - sqrt(discriminant)) / a;
+        FP_T temp = (-b - sqrt(discriminant)) / a;
         if (temp < t_max && temp > t_min) {
             rec.t = temp;
             rec.p = r.point_at_parameter(rec.t);

@@ -18,18 +18,42 @@ SRCS = main.cu
 INCS = vec3.h ray.h hitable.h hitable_list.h sphere.h camera.h material.h scene.h stb_image_write.h
 
 # default
-all: scenes/test1.png scenes/final.png
+all: scenes/test1.png scenes/checkerboard.png scenes/final.png scenes/test1_d.png scenes/checkerboard_d.png scenes/final_d.png
 
 rrt: $(SRCS) $(INCS)
-	$(NVCC) $(NVCC_FLAGS) -o $@ main.cu
+	$(NVCC) $(NVCC_FLAGS) -o $@ -DFP_T=float main.cu
 
-scenes/test1.png: rrt
+rrtd: $(SRCS) $(INCS)
+	$(NVCC) $(NVCC_FLAGS) -o $@ -DFP_T=double main.cu
+
+# ??? 
+#%.png: %.txt rtt
+#	rm -f $@
+#	./rrt -i %.txt -o $@
+
+scenes/test1.png: scenes/test1.txt rrt
 	rm -f $@
 	./rrt -i scenes/test1.txt -o $@
 
-scenes/final.png: rrt
+scenes/checkerboard.png: scenes/checkerboard.txt rrt
 	rm -f $@
-	./rrt -i scenes/final.txt -s 100 -o $@
+	./rrt -i scenes/checkerboard.txt -o $@
+
+scenes/final.png: scenes/final.txt rrt
+	rm -f $@
+	./rrt -i scenes/final.txt -o $@
+
+scenes/test1_d.png: scenes/test1.txt rrtd
+	rm -f $@
+	./rrtd -i scenes/test1.txt -o $@
+
+scenes/checkerboard_d.png: scenes/checkerboard.txt rrtd
+	rm -f $@
+	./rrtd -i scenes/checkerboard.txt -o $@
+
+scenes/final_d.png: scenes/final.txt rrtd
+	rm -f $@
+	./rrtd -i scenes/final.txt -o $@
 
 # default run args for profiling
 RUNARGS ?= -i scenes/test1.txt -w 640 -h 480 -o scenes/test1.png
@@ -44,4 +68,4 @@ profile_kernel: rrt
 	$(NCU) -f -k render -c 1 --set full --import-source on -o profile_kernel ./rrt $(RUNARGS) > profile_kernel.log
 
 clean:
-	rm -f rrt *.ppm *.png *.nsys-rep *.ncu-rep *.log *.sqlite
+	rm -f rrt rttd *.ppm *.png *.nsys-rep *.ncu-rep *.log *.sqlite

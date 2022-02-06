@@ -6,18 +6,18 @@ struct hit_record;
 #include "hitable.h"
 #include "ray.h"
 
-__device__ float schlick(float cosine, float ref_idx)
+__device__ FP_T schlick(FP_T cosine, FP_T ref_idx)
 {
-    float r0 = (1.0f - ref_idx) / (1.0f + ref_idx);
+    FP_T r0 = (1.0f - ref_idx) / (1.0f + ref_idx);
     r0 = r0 * r0;
     return r0 + (1.0f - r0) * pow((1.0f - cosine), 5.0f);
 }
 
-__device__ bool refract(const vec3 &v, const vec3 &n, float ni_over_nt, vec3 &refracted)
+__device__ bool refract(const vec3 &v, const vec3 &n, FP_T ni_over_nt, vec3 &refracted)
 {
     vec3 uv = unit_vector(v);
-    float dt = dot(uv, n);
-    float discriminant = 1.0f - ni_over_nt * ni_over_nt * (1 - dt * dt);
+    FP_T dt = dot(uv, n);
+    FP_T discriminant = 1.0f - ni_over_nt * ni_over_nt * (1 - dt * dt);
     if (discriminant > 0) {
         refracted = ni_over_nt * (uv - n * dt) - n * sqrt(discriminant);
         return true;
@@ -70,7 +70,7 @@ class lambertian : public material {
 
 class metal : public material {
   public:
-    __device__ metal(const vec3 &a, float f) : albedo(a)
+    __device__ metal(const vec3 &a, FP_T f) : albedo(a)
     {
         if (f < 1)
             fuzz = f;
@@ -93,22 +93,22 @@ class metal : public material {
     }
 
     vec3 albedo;
-    float fuzz;
+    FP_T fuzz;
 };
 
 class dielectric : public material {
   public:
-    __device__ dielectric(float ri) : ref_idx(ri) {}
+    __device__ dielectric(FP_T ri) : ref_idx(ri) {}
     __device__ virtual bool scatter(const ray &r_in, const hit_record &rec, vec3 &attenuation, ray &scattered,
                                     curandState *local_rand_state) const
     {
         vec3 outward_normal;
         vec3 reflected = reflect(r_in.direction(), rec.normal);
-        float ni_over_nt;
+        FP_T ni_over_nt;
         attenuation = vec3(1.0, 1.0, 1.0);
         vec3 refracted;
-        float reflect_prob;
-        float cosine;
+        FP_T reflect_prob;
+        FP_T cosine;
         if (dot(r_in.direction(), rec.normal) > 0.0f) {
             outward_normal = -rec.normal;
             ni_over_nt = ref_idx;
@@ -132,6 +132,6 @@ class dielectric : public material {
     }
     __device__ virtual void print(int i) const { printf("material m%d dielectric %f\n", i, ref_idx); }
 
-    float ref_idx;
+    FP_T ref_idx;
 };
 #endif

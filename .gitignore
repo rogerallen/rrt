@@ -1,5 +1,6 @@
 .vscode/
 rrt
+rrtd
 *.ppm
 *.png
 *.log
