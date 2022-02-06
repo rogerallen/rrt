@@ -85,7 +85,7 @@ __global__ void render_init(int max_x, int max_y, curandState *rand_state)
     curand_init(1984 + pixel_index, 0, 0, &rand_state[pixel_index]);
 }
 
-__global__ void __launch_bounds__(64, 12) // maxThreadsPerBlock, minBlocksPerMultiprocessor)
+__global__ void __launch_bounds__(64, 12) // maxThreadsPerBlock, minBlocksPerMultiprocessor
     render(vec3 *fb, int max_x, int max_y, int num_samples, camera **cam, hitable **world, curandState *rand_state)
 {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
@@ -181,21 +181,17 @@ __global__ void create_world(hitable **d_world, scene_camera *d_scene_camera, ca
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
 
-        vec3 from = vec3((*d_scene_camera).lookfrom_x, (*d_scene_camera).lookfrom_y, (*d_scene_camera).lookfrom_z);
-        *d_camera = new camera(from, vec3(d_scene_camera->lookat_x, d_scene_camera->lookat_y, d_scene_camera->lookat_z),
-                               vec3(d_scene_camera->vup_x, d_scene_camera->vup_y, d_scene_camera->vup_z),
+        *d_camera = new camera(d_scene_camera->lookfrom, d_scene_camera->lookat, d_scene_camera->vup,
                                (float)d_scene_camera->vfov, float(image_width) / float(image_height),
                                (float)d_scene_camera->aperture, (float)d_scene_camera->focus);
 
         for (int i = 0; i < num_materials; ++i) {
             scene_material *m = &(d_scene_materials[i]);
             if (m->type == LAMBERTIAN) {
-                d_materials[i] = new lambertian(
-                    vec3(m->mat.lambertian.albedo_r, m->mat.lambertian.albedo_g, m->mat.lambertian.albedo_b));
+                d_materials[i] = new lambertian(m->mat.lambertian.albedo);
             }
             else if (m->type == METAL) {
-                d_materials[i] = new metal(vec3(m->mat.metal.albedo_r, m->mat.metal.albedo_g, m->mat.metal.albedo_b),
-                                           m->mat.metal.fuzz);
+                d_materials[i] = new metal(m->mat.metal.albedo, m->mat.metal.fuzz);
             }
             else if (m->type == DIELECTRIC) {
                 d_materials[i] = new dielectric(m->mat.dielectric.ref_idx);
@@ -204,8 +200,7 @@ __global__ void create_world(hitable **d_world, scene_camera *d_scene_camera, ca
 
         for (int i = 0; i < num_spheres; ++i) {
             scene_sphere *s = &(d_scene_spheres[i]);
-            d_hitables[i] =
-                new sphere(vec3(s->center_x, s->center_y, s->center_z), s->radius, d_materials[s->material_index]);
+            d_hitables[i] = new sphere(s->center, s->radius, d_materials[s->material_index]);
         }
 
         *d_world = new hitable_list(d_hitables, num_spheres);
@@ -385,6 +380,7 @@ int main(int argc, char *argv[])
     render_init<<<blocks, threads>>>(image_width, image_height, d_rand_state);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
+    // note that render has __launch_bounds__ of maxThreadsPerBlock=64, minBlocksPerMultiprocessor=12
     render<<<blocks, threads>>>(fb, image_width, image_height, num_samples, d_camera, d_world, d_rand_state);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());

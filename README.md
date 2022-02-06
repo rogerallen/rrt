@@ -7,9 +7,9 @@
 - [x] real commandline options
 - [x] scene loading
 - [x] PNG output
+- [x] retry using vec3 in scene.h?
 - [ ] shared-memory sample reduction
 - [ ] double precision calculations
-- [ ] retry using vec3 in scene.h?
 
 ## Status
 

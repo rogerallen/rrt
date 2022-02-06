@@ -1,6 +1,7 @@
 #ifndef SCENEH
 #define SCENEH
 
+#include "vec3.h"
 #include <fstream>
 #include <map>
 #include <sstream>
@@ -8,16 +9,16 @@
 #include <vector>
 
 struct scene_camera {
-    double lookfrom_x, lookfrom_y, lookfrom_z;
-    double lookat_x, lookat_y, lookat_z;
-    double vup_x, vup_y, vup_z;
+    vec3 lookfrom;
+    vec3 lookat;
+    vec3 vup;
     double vfov;
     double aperture;
     double focus;
 };
 
 struct scene_sphere {
-    double center_x, center_y, center_z;
+    vec3 center;
     double radius;
     int material_index;
 };
@@ -35,11 +36,11 @@ struct scene_material {
         U(){};
         ~U(){};
         struct {
-            double albedo_r, albedo_g, albedo_b;
+            vec3 albedo;
         } lambertian;
 
         struct {
-            double albedo_r, albedo_g, albedo_b;
+            vec3 albedo;
             double fuzz;
         } metal;
 
@@ -82,15 +83,9 @@ class scene {
                 iss >> vfo_str;
                 iss >> ap_str;
                 iss >> foc_str;
-                camera.lookfrom_x = std::stod(lfx_str);
-                camera.lookfrom_y = std::stod(lfy_str);
-                camera.lookfrom_z = std::stod(lfz_str);
-                camera.lookat_x = std::stod(lax_str);
-                camera.lookat_y = std::stod(lay_str);
-                camera.lookat_z = std::stod(laz_str);
-                camera.vup_x = std::stod(vux_str);
-                camera.vup_y = std::stod(vuy_str);
-                camera.vup_z = std::stod(vuz_str);
+                camera.lookfrom = vec3(std::stod(lfx_str), std::stod(lfy_str), std::stod(lfz_str));
+                camera.lookat = vec3(std::stod(lax_str), std::stod(lay_str), std::stod(laz_str));
+                camera.vup = vec3(std::stod(vux_str), std::stod(vuy_str), std::stod(vuz_str));
                 camera.vfov = std::stod(vfo_str);
                 camera.aperture = std::stod(ap_str);
                 camera.focus = std::stod(foc_str);
@@ -108,9 +103,7 @@ class scene {
                     iss >> g_str;
                     iss >> b_str;
                     new_material->type = LAMBERTIAN;
-                    new_material->mat.lambertian.albedo_r = std::stod(r_str);
-                    new_material->mat.lambertian.albedo_g = std::stod(g_str);
-                    new_material->mat.lambertian.albedo_b = std::stod(b_str);
+                    new_material->mat.lambertian.albedo = vec3(std::stod(r_str), std::stod(g_str), std::stod(b_str));
                 }
                 else if (type_str == "metal") {
                     std::string r_str, g_str, b_str, f_str;
@@ -119,9 +112,7 @@ class scene {
                     iss >> b_str;
                     iss >> f_str;
                     new_material->type = METAL;
-                    new_material->mat.metal.albedo_r = std::stod(r_str);
-                    new_material->mat.metal.albedo_g = std::stod(g_str);
-                    new_material->mat.metal.albedo_b = std::stod(b_str);
+                    new_material->mat.metal.albedo = vec3(std::stod(r_str), std::stod(g_str), std::stod(b_str));
                     new_material->mat.metal.fuzz = std::stod(f_str);
                 }
                 else if (type_str == "dielectric") {
@@ -153,9 +144,7 @@ class scene {
 
                 scene_sphere *new_sphere = new scene_sphere;
 
-                new_sphere->center_x = std::stod(cx_str);
-                new_sphere->center_y = std::stod(cy_str);
-                new_sphere->center_z = std::stod(cz_str);
+                new_sphere->center = vec3(std::stod(cx_str), std::stod(cy_str), std::stod(cz_str));
                 new_sphere->radius = std::stod(r_str);
                 new_sphere->material_index = material_names_to_index[mat_str];
                 spheres.push_back(new_sphere);
