@@ -71,15 +71,9 @@ class scene {
                 std::string vux_str, vuy_str, vuz_str;
                 std::string vfo_str, ap_str, foc_str;
                 iss >> camera_str;
-                iss >> lfx_str; // FIXME try multiple per line
-                iss >> lfy_str;
-                iss >> lfz_str;
-                iss >> lax_str;
-                iss >> lay_str;
-                iss >> laz_str;
-                iss >> vux_str;
-                iss >> vuy_str;
-                iss >> vuz_str;
+                iss >> lfx_str >> lfy_str >> lfz_str;
+                iss >> lax_str >> lay_str >> laz_str;
+                iss >> vux_str >> vuy_str >> vuz_str;
                 iss >> vfo_str;
                 iss >> ap_str;
                 iss >> foc_str;
@@ -99,17 +93,13 @@ class scene {
                 iss >> type_str;
                 if (type_str == "lambertian") {
                     std::string r_str, g_str, b_str;
-                    iss >> r_str;
-                    iss >> g_str;
-                    iss >> b_str;
+                    iss >> r_str >> g_str >> b_str;
                     new_material->type = LAMBERTIAN;
                     new_material->mat.lambertian.albedo = vec3(std::stod(r_str), std::stod(g_str), std::stod(b_str));
                 }
                 else if (type_str == "metal") {
                     std::string r_str, g_str, b_str, f_str;
-                    iss >> r_str;
-                    iss >> g_str;
-                    iss >> b_str;
+                    iss >> r_str >> g_str >> b_str;
                     iss >> f_str;
                     new_material->type = METAL;
                     new_material->mat.metal.albedo = vec3(std::stod(r_str), std::stod(g_str), std::stod(b_str));
@@ -136,9 +126,7 @@ class scene {
                 std::string r_str;
                 std::string mat_str;
                 iss >> sphere_str;
-                iss >> cx_str;
-                iss >> cy_str;
-                iss >> cz_str;
+                iss >> cx_str >> cy_str >> cz_str;
                 iss >> r_str;
                 iss >> mat_str;
 
@@ -168,7 +156,8 @@ class scene {
         std::cerr << "material count:  " << materials.size() << "\n";
         std::cerr << "sphere count:    " << spheres.size() << std::endl;
     }
-    // FIXME -- add a destructor
+
+    // I don't think we need a destructor.
 
     scene_camera camera;
     std::map<std::string, int> material_names_to_index;
