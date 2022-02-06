@@ -57,8 +57,7 @@ class scene {
         std::string line;
         std::ifstream fl(filename);
         if (!fl.good()) {
-            std::cerr << "ERROR: problem with opening file: " << filename
-                      << "\n";
+            std::cerr << "ERROR: problem with opening file: " << filename << "\n";
             exit(2);
         }
         while (std::getline(fl, line)) {
@@ -132,14 +131,12 @@ class scene {
                     new_material->mat.dielectric.ref_idx = std::stod(r_str);
                 }
                 else {
-                    std::cerr << "ERROR: unknown material type: " << type_str
-                              << std::endl;
+                    std::cerr << "ERROR: unknown material type: " << type_str << std::endl;
                     exit(3);
                 }
                 int next_index = materials.size();
                 materials.push_back(new_material);
-                material_names_to_index.insert(
-                    std::pair<std::string, int>(name_str, next_index));
+                material_names_to_index.insert(std::pair<std::string, int>(name_str, next_index));
             }
             else if (line.find("sphere") == 0) {
                 std::istringstream iss(line);
@@ -171,8 +168,7 @@ class scene {
             std::exit(4);
         }
         if (materials.size() == 0) {
-            std::cerr << "ERROR: Scene did not have any materials."
-                      << std::endl;
+            std::cerr << "ERROR: Scene did not have any materials." << std::endl;
             std::exit(4);
         }
         if (spheres.size() == 0) {

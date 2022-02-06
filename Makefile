@@ -15,7 +15,7 @@ NVCC_DBG       = -lineinfo
 NVCC_FLAGS     = -ccbin $(HOST_COMPILER) -m64 $(NVCC_DBG) $(NVCC_GENCODE) 
 
 SRCS = main.cu
-INCS = vec3.h ray.h hitable.h hitable_list.h sphere.h camera.h material.h scene.h
+INCS = vec3.h ray.h hitable.h hitable_list.h sphere.h camera.h material.h scene.h stb_image_write.h
 
 # default
 all: scenes/test1.png scenes/final.png
