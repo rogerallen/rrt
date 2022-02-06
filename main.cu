@@ -11,6 +11,12 @@
 #include <iostream>
 #include <time.h>
 
+#ifdef COMPILING_FOR_WSL
+#define SUPPORTS_CUDA_MEM_PREFETCH_ASYNC 0
+#else
+#define SUPPORTS_CUDA_MEM_PREFETCH_ASYNC 1
+#endif
+
 // limited version of checkCudaErrors from helper_cuda.h in CUDA examples
 #define checkCudaErrors(val) check_cuda((val), #val, __FILE__, __LINE__)
 
@@ -388,11 +394,14 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaDeviceSynchronize());
 #endif
 
+#if SUPPORTS_CUDA_MEM_PREFETCH_ASYNC == 1
     // Prefetch the FB to the GPU
     int device = -1;
     checkCudaErrors(cudaGetDevice(&device));
+    std::cerr << "CUDA Device: " << device << std::endl;
     checkCudaErrors(cudaMemPrefetchAsync(fb, fb_size, device, NULL));
     checkCudaErrors(cudaGetLastError());
+#endif
 
     clock_t start, stop;
     start = clock();
@@ -414,9 +423,11 @@ int main(int argc, char *argv[])
               << image_height << "," << num_samples << "," << num_threads_x
               << "," << num_threads_y << "," << timer_seconds << "\n";
 
+#if SUPPORTS_CUDA_MEM_PREFETCH_ASYNC == 1
     // Prefetch the FB back to the CPU
     checkCudaErrors(cudaMemPrefetchAsync(fb, fb_size, cudaCpuDeviceId, NULL));
     checkCudaErrors(cudaGetLastError());
+#endif
 
     // Output FB as Image
     std::cout << "P3\n" << image_width << " " << image_height << "\n255\n";
