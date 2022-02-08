@@ -86,8 +86,10 @@ __global__ void render_init(int max_x, int max_y, curandState *rand_state)
     curand_init(1984 + pixel_index, 0, 0, &rand_state[pixel_index]);
 }
 
-__global__ void __launch_bounds__(64, 12) // maxThreadsPerBlock, minBlocksPerMultiprocessor
-    render(vec3 *fb, int max_x, int max_y, int num_samples, camera **cam, hitable **world, curandState *rand_state)
+__global__ void
+// hmm, when shmooing, remove this
+//__launch_bounds__(64, 12) // maxThreadsPerBlock, minBlocksPerMultiprocessor
+render(vec3 *fb, int max_x, int max_y, int num_samples, camera **cam, hitable **world, curandState *rand_state)
 {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
@@ -221,6 +223,25 @@ __global__ void free_world(int num_materials, material **d_materials, int num_sp
 }
 #endif
 
+void query_cuda_info()
+{
+    int count;
+    checkCudaErrors(cudaGetDeviceCount(&count));
+    for (int i = 0; i < count; i++) {
+        cudaDeviceProp prop;
+        checkCudaErrors(cudaGetDeviceProperties(&prop, i));
+        std::cout << "cudaGetDeviceProperties #" << i << "\n";
+        std::cout << "  name                        " << prop.name << "\n";
+        std::cout << "  major.minor                 " << prop.major << "." << prop.minor << "\n";
+        std::cout << "  multiProcessorCount         " << prop.multiProcessorCount << "\n";
+        std::cout << "  sharedMemPerBlock           " << prop.sharedMemPerBlock << "\n";
+        std::cout << "  maxThreadsPerBlock          " << prop.maxThreadsPerBlock << "\n";
+        std::cout << "  maxThreadsPerMultiProcessor " << prop.maxThreadsPerMultiProcessor << "\n";
+        std::cout << "  unifiedAddressing           " << prop.unifiedAddressing << "\n";
+        std::cout << "  l2CacheSize                 " << prop.l2CacheSize << "\n";
+    }
+}
+
 void usage(char *argv)
 {
     std::cerr << "Unexpected argument: " << argv << "\n\n";
@@ -232,6 +253,8 @@ void usage(char *argv)
     std::cerr << "  -s <samples>        : number of samples per pixel. (10)\n";
     std::cerr << "  -tx <num_threads_x> : number of threads per block in x. (8)\n";
     std::cerr << "  -ty <num_threads_y> : number of threads per block in y. (8)\n";
+    std::cerr << "  -q                  : query devices & cuda info\n";
+    std::cerr << "  -d <device number>  : use this device (default = 0)\n";
     std::exit(1);
 }
 
@@ -274,6 +297,13 @@ int main(int argc, char *argv[])
             else if (argv[i][1] == 'o') {
                 png_filename = argv[++i];
             }
+            else if (argv[i][1] == 'q') {
+                query_cuda_info();
+            }
+            else if (argv[i][1] == 'd') {
+                int device = atoi(argv[++i]);
+                checkCudaErrors(cudaSetDevice(device));
+            }
             else {
                 usage(argv[i]);
             }
@@ -282,6 +312,12 @@ int main(int argc, char *argv[])
             usage(argv[i]);
         }
     }
+
+    if (the_scene == nullptr) {
+        std::cerr << "ERROR: no scene loaded." << std::endl;
+        std::exit(1);
+    }
+
     int num_blocks_x = image_width / num_threads_x + 1;
     int num_blocks_y = image_height / num_threads_y + 1;
 

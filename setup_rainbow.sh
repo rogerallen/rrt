@@ -15,4 +15,5 @@ export NCU=/usr/local/NVIDIA-Nsight-Compute/ncu
 # which GPU are you compiling for?
 # gp100  pascal volta turing ga100 ampere
 # sm_60  sm_61  sm_70 sm_75  sm_80 sm_86
-export NVCC_GENCODE="-arch sm_75"
+#export NVCC_GENCODE="-arch sm_75"
+export NVCC_GENCODE="-arch sm_61 -gencode=arch=compute_61,code=sm_61 -gencode=arch=compute_75,code=sm_75"
