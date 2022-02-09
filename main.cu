@@ -111,6 +111,52 @@ render(vec3 *fb, int max_x, int max_y, int num_samples, camera **cam, hitable **
     fb[pixel_index] = col;
 }
 
+__global__ void render_init2(int max_x, int max_y, curandState *rand_state)
+{
+    int i = blockIdx.x;
+    int j = blockIdx.y;
+    int k = threadIdx.x;
+    int max_s = blockDim.x;
+    if ((i >= max_x) || (j >= max_y) || (k >= max_s)) return;
+    int sample_index = j * (max_x * max_s) + i * max_s + k;
+    curand_init(1984 + sample_index, 0, 0, &rand_state[sample_index]);
+}
+
+__global__ void render2(vec3 *fb, int max_x, int max_y, camera **cam, hitable **world, curandState *rand_state)
+{
+    extern __shared__ vec3 samples[];
+    int i = blockIdx.x;
+    int j = blockIdx.y;
+    int k = threadIdx.x; // cur_sample
+    int max_s = blockDim.x;
+    if ((i >= max_x) || (j >= max_y) || (k >= max_s)) return;
+    int pixel_index = j * max_x + i;
+    int sample_index = j * (max_x * max_s) + i * max_s + k;
+    curandState local_rand_state = rand_state[sample_index];
+    FP_T u = FP_T(i + curand_uniform(&local_rand_state)) / FP_T(max_x);
+    FP_T v = FP_T(j + curand_uniform(&local_rand_state)) / FP_T(max_y);
+    ray r = (*cam)->get_ray(u, v, &local_rand_state);
+    samples[k] = color(r, world, &local_rand_state);
+    rand_state[sample_index] = local_rand_state;
+    // reduce samples into col (see Fig 5.15 in Programming Massively Parallel Computers)
+    for (int stride = max_s / 2; stride >= 1; stride = stride >> 1) {
+        __syncthreads();
+        if (k < stride) {
+            samples[k] += samples[k + stride];
+        }
+    }
+    // scale reduced sample
+    vec3 col(samples[0] / FP_T(max_s));
+    // gamma correction
+    col[0] = sqrt(col[0]);
+    col[1] = sqrt(col[1]);
+    col[2] = sqrt(col[2]);
+    // only thread 0 writes to the framebuffer
+    if (k == 0) {
+        fb[pixel_index] = col;
+    }
+}
+
 #define RND (curand_uniform(&local_rand_state))
 
 #if 0
@@ -255,6 +301,7 @@ void usage(char *argv)
     std::cerr << "  -ty <num_threads_y> : number of threads per block in y. (8)\n";
     std::cerr << "  -q                  : query devices & cuda info\n";
     std::cerr << "  -d <device number>  : use this device (default = 0)\n";
+    std::cerr << "  -2                  : use render2 algorithm\n";
     std::exit(1);
 }
 
@@ -268,6 +315,7 @@ int main(int argc, char *argv[])
     int num_threads_y = 8;
     scene *the_scene = nullptr;
     char *png_filename = nullptr;
+    bool use_render2 = false;
 
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
@@ -304,6 +352,9 @@ int main(int argc, char *argv[])
                 int device = atoi(argv[++i]);
                 checkCudaErrors(cudaSetDevice(device));
             }
+            else if (argv[i][1] == '2') {
+                use_render2 = true;
+            }
             else {
                 usage(argv[i]);
             }
@@ -321,6 +372,14 @@ int main(int argc, char *argv[])
     int num_blocks_x = image_width / num_threads_x + 1;
     int num_blocks_y = image_height / num_threads_y + 1;
 
+    if (use_render2) {
+        // one pixel per block
+        num_threads_x = 1;
+        num_threads_y = 1;
+        num_blocks_x = image_width;
+        num_blocks_y = image_height;
+    }
+
     int cuda_runtime_version = -1;
     checkCudaErrors(cudaRuntimeGetVersion(&cuda_runtime_version));
 
@@ -328,7 +387,7 @@ int main(int argc, char *argv[])
     std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << num_samples
               << " samples per pixel ";
     std::cerr << "in " << num_blocks_x << "x" << num_blocks_y << " = " << num_blocks_x * num_blocks_y << " blocks of "
-              << num_threads_x << "x" << num_threads_y << " threads each.\n";
+              << (use_render2 ? num_samples : num_threads_x) << "x" << num_threads_y << " threads each.\n";
 
     int num_pixels = image_width * image_height;
     size_t fb_size = num_pixels * sizeof(vec3);
@@ -339,7 +398,12 @@ int main(int argc, char *argv[])
 
     // allocate random state
     curandState *d_rand_state;
-    checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * sizeof(curandState)));
+    if (!use_render2) {
+        checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * sizeof(curandState)));
+    }
+    else {
+        checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * num_samples * sizeof(curandState)));
+    }
     curandState *d_rand_state2;
     checkCudaErrors(cudaMalloc((void **)&d_rand_state2, 1 * sizeof(curandState)));
 
@@ -414,19 +478,34 @@ int main(int argc, char *argv[])
     // Render our buffer
     dim3 blocks(num_blocks_x, num_blocks_y);
     dim3 threads(num_threads_x, num_threads_y);
-    render_init<<<blocks, threads>>>(image_width, image_height, d_rand_state);
+    if (!use_render2) {
+        render_init<<<blocks, threads>>>(image_width, image_height, d_rand_state);
+    }
+    else {
+        threads.x = num_samples;
+        render_init2<<<blocks, threads>>>(image_width, image_height, d_rand_state);
+    }
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
-    // note that render has __launch_bounds__ of maxThreadsPerBlock=64, minBlocksPerMultiprocessor=12
-    render<<<blocks, threads>>>(fb, image_width, image_height, num_samples, d_camera, d_world, d_rand_state);
+    if (!use_render2) {
+        // note that render has __launch_bounds__ of maxThreadsPerBlock=64, minBlocksPerMultiprocessor=12
+        render<<<blocks, threads>>>(fb, image_width, image_height, num_samples, d_camera, d_world, d_rand_state);
+    }
+    else {
+        // render one pixel = one block.  Thread.x is the sample count.
+        threads.x = num_samples;
+        render2<<<blocks, threads, num_samples * sizeof(vec3)>>>(fb, image_width, image_height, d_camera, d_world,
+                                                                 d_rand_state);
+    }
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
     stop = clock();
     double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
     std::cerr << "took " << timer_seconds << " seconds.\n";
 
-    std::cerr << "stats:" << cuda_runtime_version << "," << image_width << "," << image_height << "," << num_samples
-              << "," << num_threads_x << "," << num_threads_y << "," << timer_seconds << "\n";
+    std::cerr << "stats:" << (use_render2 ? "r2," : "r1,") << cuda_runtime_version << "," << image_width << ","
+              << image_height << "," << num_samples << "," << (num_blocks_x * num_blocks_y) << ","
+              << (use_render2 ? num_samples : num_threads_x) << "," << num_threads_y << "," << timer_seconds << "\n";
 
 #if SUPPORTS_CUDA_MEM_PREFETCH_ASYNC == 1
     // Prefetch the FB back to the CPU
