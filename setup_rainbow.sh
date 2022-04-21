@@ -4,8 +4,8 @@
 
 # PATH & LD_LIBRARY_PATH are all setup externally, but when running sudo 
 # you need full paths.
-export NSYS=/opt/nvidia/nsight-systems/2022.1.1/bin/nsys
-export NCU=/usr/local/NVIDIA-Nsight-Compute/ncu
+export NSYS=/usr/local/cuda/bin/nsys
+export NCU=/usr/local/cuda/bin/ncu
 
 # bah, even with that for ncu you have to do
 # sudo make NCU=/usr/local/NVIDIA-Nsight-Compute/ncu profile_kernel
