@@ -1,0 +1,31 @@
+# camera lookfrom lookat  vup    vfov  aperture focus 
+camera   -2 2 1    0 1 -1  0 1 0  40.0  0.01      6.0
+
+# material name type options
+material ground lambertian 0.8 0.8 0.0
+material center lambertian 0.7 0.3 0.3
+material left   metal      0.8 0.8 0.8   0.3
+material right  metal      0.8 0.6 0.2   1.0
+
+# sphere x y z radius material
+sphere  0.0 -100.5 -1.0   100.0  ground
+sphere  0.0    0.0 -1.0     0.5  center
+sphere -1.0    0.0 -1.0     0.5  left
+sphere  1.0    0.0 -1.0     0.5  right
+
+# obj 0 tetrahedron 4 vert, 4 face
+obj_start 4 4
+obj_vtx  0.0  0.5774 -0.2041
+obj_vtx -0.5 -0.2887 -0.2041
+obj_vtx  0.5 -0.2887 -0.2041
+obj_vtx  0.0  0.0     0.6124
+obj_tri 0 1 3
+obj_tri 0 3 2
+obj_tri 0 2 1
+obj_tri 1 2 3
+obj_end
+
+# obj 0 instance (translation) material
+obj 0    0.0 1.0 -1.0    center
+obj 0   -1.0 1.0 -1.0    left 
+obj 0    1.0 1.0 -1.0    right 

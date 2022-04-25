@@ -8,6 +8,35 @@
 #include <string>
 #include <vector>
 
+//   0 - 2    indices should go around in CCW direction
+//   |  /     so that the normal is cross(0->1,0->2)
+//   1
+struct scene_triangle {
+    int vertex_idx[3]; // 3 vert indices
+    scene_triangle() { vertex_idx[0] = vertex_idx[1] = vertex_idx[2] = -1; }
+    scene_triangle(int i0, int i1, int i2)
+    {
+        vertex_idx[0] = i0;
+        vertex_idx[1] = i1;
+        vertex_idx[2] = i2;
+    }
+};
+
+struct scene_instance_triangle {
+    vec3 vertices[3]; // 3 verts
+    int material_idx;
+    scene_instance_triangle(vec3 v0, vec3 v1, vec3 v2, int mi)
+    {
+        vertices[0] = v0;
+        vertices[1] = v1;
+        vertices[2] = v2;
+        material_idx = mi;
+        // printf("sit v0=%f %f %f v1=%f %f %f v2=%f %f %f \n", vertices[0].e[0], vertices[0].e[1], vertices[0].e[2],
+        //        vertices[1].e[0], vertices[1].e[1], vertices[1].e[2], vertices[2].e[0], vertices[2].e[1],
+        //        vertices[2].e[2]);
+    }
+};
+
 struct scene_camera {
     vec3 lookfrom;
     vec3 lookat;
@@ -20,7 +49,88 @@ struct scene_camera {
 struct scene_sphere {
     vec3 center;
     double radius;
-    int material_index;
+    int material_idx;
+};
+
+struct scene_obj {
+    int num_vertices;
+    int num_triangles;
+    vec3 *vertices;
+    scene_triangle *triangles;
+    int cur_vertex_idx;
+    int cur_triangle_idx;
+    scene_obj() { num_vertices = num_triangles = 0; }
+    scene_obj(int num_verts, int num_tris)
+    {
+        num_vertices = num_verts;
+        num_triangles = num_tris;
+        vertices = new vec3[num_vertices];
+        triangles = new scene_triangle[num_triangles];
+        cur_vertex_idx = 0;
+        cur_triangle_idx = 0;
+    };
+    ~scene_obj()
+    {
+        delete[] vertices;
+        delete[] triangles;
+    };
+    void add_vertex(vec3 v)
+    {
+        if (cur_vertex_idx == num_vertices) {
+            std::string("ERROR: only expected " + std::to_string(num_vertices) + " vertices.");
+            std::exit(1);
+        }
+        vertices[cur_vertex_idx++] = v;
+    };
+    void add_triangle(int i, int j, int k)
+    {
+        if (cur_triangle_idx == num_triangles) {
+            std::string("ERROR: only expected " + std::to_string(num_triangles) + " triangles.");
+            std::exit(1);
+        }
+        scene_triangle t = scene_triangle(i, j, k);
+        triangles[cur_triangle_idx++] = t;
+    };
+    void finish()
+    {
+        if (cur_vertex_idx != num_vertices) {
+            std::string("ERROR: expected " + std::to_string(num_vertices) + " vertices, got " +
+                        std::to_string(cur_vertex_idx) + ".");
+            std::exit(1);
+        }
+        if (cur_triangle_idx != num_triangles) {
+            std::string("ERROR: expected " + std::to_string(num_triangles) + " triangles, got " +
+                        std::to_string(cur_triangle_idx) + ".");
+            std::exit(1);
+        }
+    }
+};
+
+struct scene_obj_inst {
+    int obj_idx;
+    vec3 translation;
+    int material_idx;
+    scene_obj_inst(int oi, vec3 t, int mi)
+    {
+        obj_idx = oi;
+        translation = t;
+        material_idx = mi;
+    }
+    int num_triangles(std::vector<scene_obj *> &objs) { return objs[obj_idx]->num_triangles; }
+    scene_instance_triangle *fill_instance_triangles(std::vector<scene_obj *> &objs,
+                                                     scene_instance_triangle *instance_triangles)
+    {
+        for (int i = 0; i < objs[obj_idx]->num_triangles; i++) {
+            vec3 v0 = objs[obj_idx]->vertices[objs[obj_idx]->triangles[i].vertex_idx[0]];
+            vec3 v1 = objs[obj_idx]->vertices[objs[obj_idx]->triangles[i].vertex_idx[1]];
+            vec3 v2 = objs[obj_idx]->vertices[objs[obj_idx]->triangles[i].vertex_idx[2]];
+            v0 = v0 + translation;
+            v1 = v1 + translation;
+            v2 = v2 + translation;
+            *instance_triangles++ = scene_instance_triangle(v0, v1, v2, material_idx);
+        }
+        return instance_triangles;
+    }
 };
 
 enum scene_material_t { LAMBERTIAN = 0, METAL, DIELECTRIC };
@@ -57,11 +167,14 @@ class scene {
         bool got_camera = false;
         std::string line;
         std::ifstream fl(filename);
+        scene_obj *new_obj = nullptr;
+        bool adding_obj = false;
         if (!fl.good()) {
             std::cerr << "ERROR: problem with opening file: " << filename << "\n";
             exit(2);
         }
         while (std::getline(fl, line)) {
+            // std::cout << "LINE: " << line << "\n";
             if (line.find("camera") == 0) {
                 got_camera = true;
                 std::istringstream iss(line);
@@ -115,9 +228,9 @@ class scene {
                     std::cerr << "ERROR: unknown material type: " << type_str << std::endl;
                     exit(3);
                 }
-                int next_index = materials.size();
+                int next_idx = materials.size();
                 materials.push_back(new_material);
-                material_names_to_index.insert(std::pair<std::string, int>(name_str, next_index));
+                material_names_to_idx.insert(std::pair<std::string, int>(name_str, next_idx));
             }
             else if (line.find("sphere") == 0) {
                 std::istringstream iss(line);
@@ -134,8 +247,71 @@ class scene {
 
                 new_sphere->center = vec3(std::stod(cx_str), std::stod(cy_str), std::stod(cz_str));
                 new_sphere->radius = std::stod(r_str);
-                new_sphere->material_index = material_names_to_index[mat_str];
+                new_sphere->material_idx = material_names_to_idx[mat_str];
                 spheres.push_back(new_sphere);
+            }
+            else if (line.find("obj_start") == 0) {
+                std::istringstream iss(line);
+                std::string obj_str;
+                std::string nv_str, nt_str;
+                iss >> obj_str;
+                iss >> nv_str >> nt_str;
+                if (new_obj != nullptr) {
+                    std::string("ERROR: obj_start called without prior obj_end.");
+                    std::exit(1);
+                }
+                new_obj = new scene_obj(std::stoi(nv_str), std::stoi(nt_str));
+                adding_obj = true;
+            }
+            else if (line.find("obj_vtx") == 0) {
+                if (!adding_obj) {
+                    std::string("ERROR: obj_vtx called without prior obj_start.");
+                    std::exit(1);
+                }
+                std::istringstream iss(line);
+                std::string obj_str;
+                std::string x_str, y_str, z_str;
+                iss >> obj_str;
+                iss >> x_str >> y_str >> z_str;
+                new_obj->add_vertex(vec3(std::stod(x_str), std::stod(y_str), std::stod(z_str)));
+            }
+            else if (line.find("obj_tri") == 0) {
+                if (!adding_obj) {
+                    std::string("ERROR: obj_tri called without prior obj_start.");
+                    std::exit(1);
+                }
+                std::istringstream iss(line);
+                std::string obj_str;
+                std::string i_str, j_str, k_str;
+                iss >> obj_str;
+                iss >> i_str >> j_str >> k_str;
+                new_obj->add_triangle(std::stoi(i_str), std::stoi(j_str), std::stoi(k_str));
+            }
+            else if (line.find("obj_end") == 0) {
+                if (!adding_obj) {
+                    std::string("ERROR: obj_end called without prior obj_start.");
+                    std::exit(1);
+                }
+                new_obj->finish();
+                objs.push_back(new_obj);
+                new_obj = nullptr;
+                adding_obj = true;
+            }
+            else if (line.find("obj") == 0) {
+                std::istringstream iss(line);
+                std::string obj_inst_str;
+                std::string oi_str;
+                std::string tx_str, ty_str, tz_str;
+                std::string mat_str;
+                iss >> obj_inst_str;
+                iss >> oi_str;
+                iss >> tx_str >> ty_str >> tz_str;
+                iss >> mat_str;
+
+                scene_obj_inst *new_obj_inst =
+                    new scene_obj_inst(std::stoi(oi_str), vec3(std::stod(tx_str), std::stod(ty_str), std::stod(tz_str)),
+                                       material_names_to_idx[mat_str]);
+                obj_insts.push_back(new_obj_inst);
             }
         }
         fl.close();
@@ -155,14 +331,31 @@ class scene {
         std::cerr << "read scene file: " << filename << "\n";
         std::cerr << "material count:  " << materials.size() << "\n";
         std::cerr << "sphere count:    " << spheres.size() << std::endl;
+        std::cerr << "obj count:       " << objs.size() << std::endl;
+        std::cerr << "obj_inst count:  " << obj_insts.size() << std::endl;
+    }
+    // I don't think we need a destructor.
+    int num_triangles()
+    {
+        int n = 0;
+        for (auto i : obj_insts) {
+            n += i->num_triangles(objs);
+        }
+        return n;
+    }
+    void fill_instance_triangles(scene_instance_triangle *instance_triangles)
+    {
+        for (auto i : obj_insts) {
+            instance_triangles = i->fill_instance_triangles(objs, instance_triangles);
+        }
     }
 
-    // I don't think we need a destructor.
-
     scene_camera camera;
-    std::map<std::string, int> material_names_to_index;
+    std::map<std::string, int> material_names_to_idx;
     std::vector<scene_material *> materials;
     std::vector<scene_sphere *> spheres;
+    std::vector<scene_obj *> objs;
+    std::vector<scene_obj_inst *> obj_insts;
 };
 
 #endif

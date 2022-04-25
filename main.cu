@@ -5,6 +5,7 @@
 #include "ray.h"
 #include "scene.h"
 #include "sphere.h"
+#include "triangle.h"
 #include "vec3.h"
 #include <assert.h>
 #include <curand_kernel.h>
@@ -39,13 +40,13 @@ void check_cuda(cudaError_t result, char const *const func, const char *const fi
 // it was blowing up the stack, so we have to turn this into a
 // limited-depth loop instead.  Later code in the book limits to a max
 // depth of 50, so we adapt this a few chapters early on the GPU.
-__device__ vec3 color(const ray &r, hitable **world, curandState *local_rand_state)
+__device__ vec3 color(const ray &r, hitable **world, curandState *local_rand_state, bool debug)
 {
     ray cur_ray = r;
     vec3 cur_attenuation = vec3(1.0, 1.0, 1.0);
     for (int i = 0; i < 50; i++) {
         hit_record rec;
-        if ((*world)->hit(cur_ray, 0.001f, FLT_MAX, rec)) {
+        if ((*world)->hit(cur_ray, 0.001f, FLT_MAX, rec, debug)) {
             ray scattered;
             vec3 attenuation;
             if (rec.mat_ptr->scatter(cur_ray, rec, attenuation, scattered, local_rand_state)) {
@@ -96,12 +97,19 @@ render(vec3 *fb, int max_x, int max_y, int num_samples, camera **cam, hitable **
     if ((i >= max_x) || (j >= max_y)) return;
     int pixel_index = j * max_x + i;
     curandState local_rand_state = rand_state[pixel_index];
+    bool debug = false;
+#if 0
+    if ((i == 600) && (j == 600)) {
+        debug = true;
+        printf("DEBUG i=%d j=%d\n", i, j);
+    }
+#endif
     vec3 col(0, 0, 0);
     for (int s = 0; s < num_samples; s++) {
         FP_T u = FP_T(i + curand_uniform(&local_rand_state)) / FP_T(max_x);
         FP_T v = FP_T(j + curand_uniform(&local_rand_state)) / FP_T(max_y);
         ray r = (*cam)->get_ray(u, v, &local_rand_state);
-        col += color(r, world, &local_rand_state);
+        col += color(r, world, &local_rand_state, debug);
     }
     rand_state[pixel_index] = local_rand_state;
     col /= FP_T(num_samples);
@@ -136,7 +144,7 @@ __global__ void render2(vec3 *fb, int max_x, int max_y, camera **cam, hitable **
     FP_T u = FP_T(i + curand_uniform(&local_rand_state)) / FP_T(max_x);
     FP_T v = FP_T(j + curand_uniform(&local_rand_state)) / FP_T(max_y);
     ray r = (*cam)->get_ray(u, v, &local_rand_state);
-    samples[k] = color(r, world, &local_rand_state);
+    samples[k] = color(r, world, &local_rand_state, false);
     rand_state[sample_index] = local_rand_state;
     // reduce samples into col (see Fig 5.15 in Programming Massively Parallel Computers)
     for (int stride = max_s / 2; stride >= 1; stride = stride >> 1) {
@@ -226,7 +234,9 @@ __global__ void free_world(hitable **d_hitables, hitable **d_world,
 #else
 __global__ void create_world(hitable **d_world, scene_camera *d_scene_camera, camera **d_camera, int num_materials,
                              scene_material *d_scene_materials, material **d_materials, int num_spheres,
-                             scene_sphere *d_scene_spheres, hitable **d_hitables, int image_width, int image_height)
+                             scene_sphere *d_scene_spheres, int num_triangles,
+                             scene_instance_triangle *d_scene_triangles, hitable **d_hitables, int image_width,
+                             int image_height)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
 
@@ -247,12 +257,19 @@ __global__ void create_world(hitable **d_world, scene_camera *d_scene_camera, ca
             }
         }
 
-        for (int i = 0; i < num_spheres; ++i) {
+        int i = 0;
+        for (; i < num_spheres; ++i) {
             scene_sphere *s = &(d_scene_spheres[i]);
-            d_hitables[i] = new sphere(s->center, s->radius, d_materials[s->material_index]);
+            d_hitables[i] = new sphere(s->center, s->radius, d_materials[s->material_idx]);
+        }
+        // keep using i to index into hitables...
+        for (int j = 0; j < num_triangles; ++j) {
+            scene_instance_triangle *t = &(d_scene_triangles[j]);
+            d_hitables[i++] =
+                new triangle(t->vertices[0], t->vertices[1], t->vertices[2], d_materials[t->material_idx]);
         }
 
-        *d_world = new hitable_list(d_hitables, num_spheres);
+        *d_world = new hitable_list(d_hitables, num_spheres + num_triangles);
     }
 }
 __global__ void free_world(int num_materials, material **d_materials, int num_spheres, hitable **d_hitables,
@@ -447,6 +464,12 @@ int main(int argc, char *argv[])
         d_scene_spheres[i] = *(the_scene->spheres[i]);
     }
 
+    scene_instance_triangle *d_instance_triangles;
+    int num_instance_triangles = the_scene->num_triangles();
+    checkCudaErrors(
+        cudaMallocManaged((void **)&d_instance_triangles, num_instance_triangles * sizeof(scene_instance_triangle)));
+    the_scene->fill_instance_triangles(d_instance_triangles);
+
     // now create the data that will contain the world.  create_world populates
     // these
     camera **d_camera;
@@ -454,12 +477,15 @@ int main(int argc, char *argv[])
     material **d_materials;
     checkCudaErrors(cudaMalloc((void **)&d_materials, num_materials * sizeof(material *)));
     hitable **d_hitables;
-    checkCudaErrors(cudaMalloc((void **)&d_hitables, num_spheres * sizeof(hitable *)));
+    int num_hitables = num_instance_triangles + num_spheres;
+    std::cerr << "num_hitables = " << num_hitables << "\n";
+    checkCudaErrors(cudaMalloc((void **)&d_hitables, num_hitables * sizeof(hitable *)));
     hitable **d_world;
     checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hitable *)));
 
     create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,
-                           num_spheres, d_scene_spheres, d_hitables, image_width, image_height);
+                           num_spheres, d_scene_spheres, num_instance_triangles, d_instance_triangles, d_hitables,
+                           image_width, image_height);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 #endif
