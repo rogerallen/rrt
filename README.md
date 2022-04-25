@@ -11,7 +11,7 @@
 - [x] double precision calculations
 - [x] select device
 - [x] shared-memory sample reduction
-- [ ] scene loading class can be sent
+- [x] triangle-based objects
 
 ## Status
 

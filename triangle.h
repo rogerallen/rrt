@@ -35,26 +35,37 @@ __device__ bool triangle::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &
     vec3 edge2 = vertices[2] - vertices[0];
     vec3 h = cross(r.direction(), edge2);
     FP_T a = dot(edge1, h);
-    if (a > -EPSILON && a < EPSILON) return false; // This ray is parallel to this triangle.
+    if (a > -EPSILON && a < EPSILON) {
+        return false; // This ray is parallel to this triangle.
+    }
     FP_T f = 1.0 / a;
     vec3 s = r.origin() - vertices[0];
     FP_T u = dot(f * s, h);
-    if (u < 0.0 || u > 1.0) return false;
+    if (u < 0.0 || u > 1.0) {
+        return false;
+    }
     vec3 q = cross(s, edge1);
     FP_T v = dot(f * r.direction(), q);
-    if (v < 0.0 || u + v > 1.0) return false;
+    if (v < 0.0 || u + v > 1.0) {
+        return false;
+    }
+    if (debug) printf("DEBUG tri u=%f v=%f\n", u, v);
     // At this stage we can compute t to find out where the intersection point is on the line.
     float t = dot(f * edge2, q);
     if (t > EPSILON) { // ray intersection
         // outIntersectionPoint = rayOrigin + rayVector * t;
-        rec.t = t;
-        rec.p = r.point_at_parameter(rec.t);
-        rec.normal = normal;
-        rec.mat_ptr = mat_ptr;
-        return true;
+        // need to handle the t_min, t_max bit...
+        if ((t > t_min) && (t < t_max)) {
+            rec.t = t;
+            rec.p = r.point_at_parameter(rec.t);
+            rec.normal = normal;
+            rec.mat_ptr = mat_ptr;
+            return true;
+        }
+        else
+            return false;
     }
-    else // This means that there is a line intersection but not a ray intersection.
-        return false;
+    // This means that there is a line intersection but not a ray intersection.
     return false;
 }
 
