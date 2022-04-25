@@ -18,7 +18,7 @@ SRCS = main.cu
 INCS = vec3.h ray.h hitable.h hitable_list.h sphere.h triangle.h camera.h material.h scene.h stb_image_write.h
 
 # default
-all: scenes/test1.png scenes/checkerboard.png scenes/final.png scenes/test1_d.png scenes/checkerboard_d.png scenes/final_d.png
+all: scenes/test1.png scenes/test2.png scenes/checkerboard.png scenes/final.png scenes/test1_d.png scenes/test2_d.png scenes/checkerboard_d.png scenes/final_d.png
 
 rrt: $(SRCS) $(INCS)
 	$(NVCC) $(NVCC_FLAGS) -o $@ -DFP_T=float main.cu
@@ -35,6 +35,10 @@ scenes/test1.png: scenes/test1.txt rrt
 	rm -f $@
 	./rrt -i scenes/test1.txt -o $@
 
+scenes/test2.png: scenes/test2.txt rrt
+	rm -f $@
+	./rrt -i scenes/test2.txt -o $@
+
 scenes/checkerboard.png: scenes/checkerboard.txt rrt
 	rm -f $@
 	./rrt -i scenes/checkerboard.txt -o $@
@@ -46,6 +50,10 @@ scenes/final.png: scenes/final.txt rrt
 scenes/test1_d.png: scenes/test1.txt rrtd
 	rm -f $@
 	./rrtd -i scenes/test1.txt -o $@
+
+scenes/test2_d.png: scenes/test2.txt rrtd
+	rm -f $@
+	./rrtd -i scenes/test2.txt -o $@
 
 scenes/checkerboard_d.png: scenes/checkerboard.txt rrtd
 	rm -f $@
