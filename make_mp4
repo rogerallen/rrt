@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# usage: make_mp4 output.mp4
+#
+# Two pass method to compress to a specific birate or filesize.
+#
+# Youtube recommends:
+# Mbps | 720p  | 1080p |
+# -----+-------+-------+
+# 30Hz |   5   |   8   |  << currently 30Hz
+# 60Hz |  7.5  |  12   |
+#
+OUT=$1
+printf "file '%s'\nduration 0.0333333333333333\n" *.png > all.list
+ffmpeg \
+  -y -f concat -i all.list \
+  -pix_fmt yuv420p -an \
+  -c:v libx264 -preset veryslow -b:v 5000k -pass 1 \
+  -r 30 \
+  -f mp4 /dev/null && \
+ffmpeg \
+  -f concat -i all.list \
+  -pix_fmt yuv420p -an \
+  -c:v libx264 -preset veryslow -b:v 5000k -pass 2 \
+  -r 30 \
+  ${OUT}
