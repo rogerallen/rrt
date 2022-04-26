@@ -9,3 +9,7 @@ rrtd
 *.ncu-occ
 *.ncu-proj
 *.sqlite
+scenes/anim*/*.txt
+*.list
+*.mp4
+*.log.mbtree
