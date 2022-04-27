@@ -126,12 +126,20 @@ class xf_scale : public xform {
     virtual vec3 transform(vec3 v) { return v * s; }
 };
 class xf_rotate : public xform {
-    double angle;
+    double angle; // angle in degrees
     vec3 axis;
 
   public:
     xf_rotate(double a, vec3 v) : angle(a), axis(v) {}
-    virtual vec3 transform(vec3 v) { return v * axis * angle; } // FIXME
+    // https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
+    virtual vec3 transform(vec3 v)
+    {
+        double theta = angle * (M_PI / 180);
+        double cos_theta = cos(theta);
+        double sin_theta = sin(theta);
+        vec3 rotated = (v * cos_theta) + (cross(axis, v) * sin_theta) + (axis * dot(axis, v)) * (1 - cos_theta);
+        return rotated;
+    }
 };
 
 struct scene_obj_inst {
