@@ -14,7 +14,7 @@ material mirror metal      0.8 0.8 0.8   0.01
 material glass  dielectric 1.73
 
 # obj 0 pyramid 5 verts, 6 triangles
-obj_start 5 6
+obj_beg 5 6
 obj_vtx  0.0  0.0  0.0
 obj_vtx  1.0  0.0  0.0
 obj_vtx  1.0  0.0  1.0
@@ -58,4 +58,4 @@ sphere  -0.25 0.1 -1.0 0.1 green
 sphere  -0.25 0.1 -1.2 0.1 yellow
 
 # obj 0 instance (translation) material
-obj 0   -0.5   0.0   -0.5    glass
+obj 0 glass trans  -0.5   0.0   -0.5    

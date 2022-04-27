@@ -106,14 +106,42 @@ struct scene_obj {
     }
 };
 
+class xform {
+  public:
+    virtual vec3 transform(vec3 v) = 0;
+};
+
+class xf_translation : public xform {
+    vec3 t;
+
+  public:
+    xf_translation(vec3 v) : t(v) {}
+    virtual vec3 transform(vec3 v) { return v + t; }
+};
+class xf_scale : public xform {
+    vec3 s;
+
+  public:
+    xf_scale(vec3 v) : s(v) {}
+    virtual vec3 transform(vec3 v) { return v * s; }
+};
+class xf_rotate : public xform {
+    double angle;
+    vec3 axis;
+
+  public:
+    xf_rotate(double a, vec3 v) : angle(a), axis(v) {}
+    virtual vec3 transform(vec3 v) { return v * axis * angle; } // FIXME
+};
+
 struct scene_obj_inst {
     int obj_idx;
-    vec3 translation;
     int material_idx;
-    scene_obj_inst(int oi, vec3 t, int mi)
+    std::vector<xform *> transforms;
+
+    scene_obj_inst(int oi, int mi)
     {
         obj_idx = oi;
-        translation = t;
         material_idx = mi;
     }
     int num_triangles(std::vector<scene_obj *> &objs) { return objs[obj_idx]->num_triangles; }
@@ -124,13 +152,23 @@ struct scene_obj_inst {
             vec3 v0 = objs[obj_idx]->vertices[objs[obj_idx]->triangles[i].vertex_idx[0]];
             vec3 v1 = objs[obj_idx]->vertices[objs[obj_idx]->triangles[i].vertex_idx[1]];
             vec3 v2 = objs[obj_idx]->vertices[objs[obj_idx]->triangles[i].vertex_idx[2]];
-            v0 = v0 + translation;
-            v1 = v1 + translation;
-            v2 = v2 + translation;
+            v0 = transform(v0);
+            v1 = transform(v1);
+            v2 = transform(v2);
             *instance_triangles++ = scene_instance_triangle(v0, v1, v2, material_idx);
         }
         return instance_triangles;
     }
+    vec3 transform(vec3 v)
+    {
+        for (auto xf : transforms) {
+            v = xf->transform(v);
+        }
+        return v;
+    }
+    void add_translate(vec3 v) { transforms.push_back(new xf_translation(v)); }
+    void add_scale(vec3 v) { transforms.push_back(new xf_scale(v)); }
+    void add_rotate(double angle, vec3 v) { transforms.push_back(new xf_rotate(angle, v)); }
 };
 
 enum scene_material_t { LAMBERTIAN = 0, METAL, DIELECTRIC };
@@ -250,14 +288,14 @@ class scene {
                 new_sphere->material_idx = material_names_to_idx[mat_str];
                 spheres.push_back(new_sphere);
             }
-            else if (line.find("obj_start") == 0) {
+            else if (line.find("obj_beg") == 0) {
                 std::istringstream iss(line);
                 std::string obj_str;
                 std::string nv_str, nt_str;
                 iss >> obj_str;
                 iss >> nv_str >> nt_str;
                 if (new_obj != nullptr) {
-                    std::string("ERROR: obj_start called without prior obj_end.");
+                    std::cerr << "ERROR: obj_beg called without prior obj_end.\n";
                     std::exit(1);
                 }
                 new_obj = new scene_obj(std::stoi(nv_str), std::stoi(nt_str));
@@ -265,7 +303,7 @@ class scene {
             }
             else if (line.find("obj_vtx") == 0) {
                 if (!adding_obj) {
-                    std::string("ERROR: obj_vtx called without prior obj_start.");
+                    std::cerr << "ERROR: obj_vtx called without prior obj_beg\n";
                     std::exit(1);
                 }
                 std::istringstream iss(line);
@@ -277,7 +315,7 @@ class scene {
             }
             else if (line.find("obj_tri") == 0) {
                 if (!adding_obj) {
-                    std::string("ERROR: obj_tri called without prior obj_start.");
+                    std::cerr << "ERROR: obj_tri called without prior obj_beg.\n";
                     std::exit(1);
                 }
                 std::istringstream iss(line);
@@ -289,7 +327,7 @@ class scene {
             }
             else if (line.find("obj_end") == 0) {
                 if (!adding_obj) {
-                    std::string("ERROR: obj_end called without prior obj_start.");
+                    std::string("ERROR: obj_end called without prior obj_beg.");
                     std::exit(1);
                 }
                 new_obj->finish();
@@ -299,19 +337,42 @@ class scene {
             }
             else if (line.find("obj") == 0) {
                 std::istringstream iss(line);
-                std::string obj_inst_str;
-                std::string oi_str;
-                std::string tx_str, ty_str, tz_str;
-                std::string mat_str;
-                iss >> obj_inst_str;
-                iss >> oi_str;
-                iss >> tx_str >> ty_str >> tz_str;
-                iss >> mat_str;
-
-                scene_obj_inst *new_obj_inst =
-                    new scene_obj_inst(std::stoi(oi_str), vec3(std::stod(tx_str), std::stod(ty_str), std::stod(tz_str)),
-                                       material_names_to_idx[mat_str]);
-                obj_insts.push_back(new_obj_inst);
+                std::vector<std::string> words;
+                while (iss) {
+                    std::string s;
+                    iss >> s;
+                    words.push_back(s);
+                }
+                if (words.size() >= 3) {
+                    scene_obj_inst *new_obj_inst =
+                        new scene_obj_inst(std::stoi(words[1]), material_names_to_idx[words[2]]);
+                    int cur_idx = 3;
+                    // words has an extra "blank" at the end
+                    while (cur_idx < words.size() - 1) {
+                        if (words[cur_idx][0] == 't') {
+                            new_obj_inst->add_translate(vec3(std::stod(words[cur_idx + 1]),
+                                                             std::stod(words[cur_idx + 2]),
+                                                             std::stod(words[cur_idx + 3])));
+                            cur_idx += 4;
+                        }
+                        else if (words[cur_idx][0] == 's') {
+                            new_obj_inst->add_scale(vec3(std::stod(words[cur_idx + 1]), std::stod(words[cur_idx + 2]),
+                                                         std::stod(words[cur_idx + 3])));
+                            cur_idx += 4;
+                        }
+                        else if (words[cur_idx][0] == 'r') {
+                            new_obj_inst->add_rotate(std::stod(words[cur_idx + 1]),
+                                                     vec3(std::stod(words[cur_idx + 2]), std::stod(words[cur_idx + 3]),
+                                                          std::stod(words[cur_idx + 4])));
+                            cur_idx += 5;
+                        }
+                    }
+                    obj_insts.push_back(new_obj_inst);
+                }
+                else {
+                    std::cerr << "ERROR: obj called without enough args (count = " << words.size() << "\n";
+                    std::exit(1);
+                }
             }
         }
         fl.close();

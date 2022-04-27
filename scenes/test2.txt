@@ -8,7 +8,7 @@ material mirror metal      0.8 0.8 0.8   0.1
 material bronze metal      0.8 0.6 0.2   1.0
 
 # obj 0 tetrahedron 4 vert, 4 face
-obj_start 4 4
+obj_beg 4 4
 obj_vtx  0.0  0.5774 -0.2041
 obj_vtx -0.5 -0.2887 -0.2041
 obj_vtx  0.5 -0.2887 -0.2041
@@ -25,7 +25,7 @@ sphere  0.0    1.0 -1.0     0.5  mirror
 sphere -1.0    1.0 -0.5     0.5  pinky
 sphere  1.0    1.0 -0.5     0.5  bronze
 
-# obj 0 instance (translation) material
-obj 0    0.0  -0.25 -1.0    mirror
-obj 0   -0.55 -0.25 -0.75    pinky
-obj 0    0.55 -0.25 -0.75    bronze 
+# obj 0 instances material (translation) 
+obj 0  mirror t  0.0  -0.25 -1.0
+obj 0  pinky  t -0.55 -0.25 -0.75    
+obj 0  bronze t  0.55 -0.25 -0.75     
