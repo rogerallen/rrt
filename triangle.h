@@ -3,11 +3,18 @@
 
 #include "hitable.h"
 
+//   2 - 1    indices should go around in CCW direction
+//   |  /     so that the normal is cross(0->1,0->2)
+//   0
 __device__ vec3 get_normal(vec3 v0, vec3 v1, vec3 v2)
 {
     vec3 v01 = v1 - v0;
+    v01.make_unit_vector();
     vec3 v02 = v2 - v0;
-    return cross(v01, v02);
+    v02.make_unit_vector();
+    vec3 c = cross(v01, v02);
+    c.make_unit_vector();
+    return c;
 }
 
 class triangle : public hitable {

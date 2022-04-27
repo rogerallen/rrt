@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-//   0 - 2    indices should go around in CCW direction
+//   2 - 1    indices should go around in CCW direction
 //   |  /     so that the normal is cross(0->1,0->2)
-//   1
+//   0
 struct scene_triangle {
     int vertex_idx[3]; // 3 vert indices
     scene_triangle() { vertex_idx[0] = vertex_idx[1] = vertex_idx[2] = -1; }
