@@ -1,0 +1,61 @@
+# camera lookfrom lookat  vup    vfov  aperture focus 
+camera   0 3.0 9    0 0.0 0  0 1 0  20.0  0.01      6.0
+
+# material name type options
+material ground lambertian 0.8 0.8 0.8
+material red    lambertian 1.0 0.0 0.0
+material orange lambertian 1.0 0.5 0.0
+material yellow lambertian 1.0 1.0 0.0
+material green  lambertian 0.0 1.0 0.0
+material blue   lambertian 0.0 0.0 1.0
+material indigo lambertian 0.3 0.0 0.5
+material violet lambertian 0.6 0.0 0.8
+material mirror metal      0.8 0.8 0.8   0.01
+material glass  dielectric 1.73
+
+# obj 0 pyramid 5 verts, 6 triangles
+obj_start 5 6
+obj_vtx  0.0  0.0  0.0
+obj_vtx  1.0  0.0  0.0
+obj_vtx  1.0  0.0  1.0
+obj_vtx  0.0  0.0  1.0
+obj_vtx  0.5  1.0  0.5
+obj_tri 0 1 2
+obj_tri 0 2 3
+obj_tri 0 1 4
+obj_tri 1 2 4
+obj_tri 2 3 4
+obj_tri 3 0 4
+obj_end
+
+# sphere x y z radius material
+sphere  0.0 -100.1  0.0   100.0  ground
+#sphere 0.7311959341363677 0.25 0.1668907004672358 0.1 red
+#sphere 0.32541280433816844 0.25 0.6757266509268145 0.1 orange
+#sphere -0.32541280433816855 0.25 0.6757266509268144 0.1 yellow
+#sphere -0.7311959341363677 0.25 0.16689070046723586 0.1 green
+#sphere -0.5863736118510222 0.25 -0.46761735139405036 0.1 blue
+#sphere -1.3777276490407724e-16 0.25 -0.75 0.1 indigo
+#sphere 0.5863736118510219 0.25 -0.4676173513940508 0.1 violet
+#sphere 0.7311959341363677 0.75 0.1668907004672358 0.1 red
+#sphere 0.32541280433816844 0.75 0.6757266509268145 0.1 orange
+#sphere -0.32541280433816855 0.75 0.6757266509268144 0.1 yellow
+#sphere -0.7311959341363677 0.75 0.16689070046723586 0.1 green
+#sphere -0.5863736118510222 0.75 -0.46761735139405036 0.1 blue
+#sphere -1.3777276490407724e-16 0.75 -0.75 0.1 indigo
+#sphere 0.5863736118510219 0.75 -0.4676173513940508 0.1 violet
+sphere  0.0 0.1 -0.6 0.1 red
+sphere  0.0 0.1 -0.8 0.1 orange
+sphere  0.0 0.1 -1.0 0.1 green
+sphere  0.0 0.1 -1.2 0.1 yellow
+sphere  0.25 0.1 -0.6 0.1 red
+sphere  0.25 0.1 -0.8 0.1 orange
+sphere  0.25 0.1 -1.0 0.1 green
+sphere  0.25 0.1 -1.2 0.1 yellow
+sphere  -0.25 0.1 -0.6 0.1 red
+sphere  -0.25 0.1 -0.8 0.1 orange
+sphere  -0.25 0.1 -1.0 0.1 green
+sphere  -0.25 0.1 -1.2 0.1 yellow
+
+# obj 0 instance (translation) material
+obj 0   -0.5   0.0   -0.5    glass
