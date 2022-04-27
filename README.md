@@ -12,6 +12,7 @@
 - [x] select device
 - [x] shared-memory sample reduction
 - [x] triangle-based objects
+- [ ] input list of scenes to render
 
 ## Status
 

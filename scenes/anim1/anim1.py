@@ -15,7 +15,7 @@ material bronze metal      0.8 0.6 0.2   1.0
 material glass  dielectric 1.35
 
 # obj 0 tetrahedron 4 vert, 4 face
-obj_start 4 4
+obj_beg 4 4
 obj_vtx  0.0  0.5774 -0.2041
 obj_vtx -0.5 -0.2887 -0.2041
 obj_vtx  0.5 -0.2887 -0.2041
@@ -33,12 +33,12 @@ sphere -1.0    1.5 -0.5     0.5  pinky
 sphere  1.0    1.5 -0.5     0.5  bronze
 
 # obj 0 instance (translation) material
-obj 0    0.0 0.90  0.20     glass
-obj 0   -0.65 0.25 -0.75    pinky
-obj 0    0.65 0.25 -0.75    bronze
+obj 0 glass  t  0.0 0.90  0.20     
+obj 0 mirror  t -0.65 0.25 -0.75    
+obj 0 bronze t  0.65 0.25 -0.75    
 """
 
-for i in range(180,360,1):
+for i in range(0,360,1):
     deg = i
     theta = math.radians(deg)
     from_x = 5.0 * math.cos(theta)    

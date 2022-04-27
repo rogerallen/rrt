@@ -8,10 +8,10 @@ targets=$(shell for file in `find . -name '*.txt' -type f -printf "%f\n" | sed '
 all: $(targets)
 
 %.png: %.txt
-	../rrt -s 100 -i $< -o $@
+	../../rrt -s 100 -i $< -o $@
 
 anim1.mp4:
-	../make_mp4 anim1.mp4
+	../../make_mp4 anim1.mp4
 
 clean:
 	rm -f *.txt *.png

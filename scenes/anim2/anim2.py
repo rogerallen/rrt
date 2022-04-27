@@ -26,7 +26,7 @@ material glass  dielectric 1.35
 def objects():
     return f"""
 # obj 0 tetrahedron 4 vert, 4 face
-obj_start 4 4
+obj_beg 4 4
 obj_vtx  0.0  0.5774 -0.2041
 obj_vtx -0.5 -0.2887 -0.2041
 obj_vtx  0.5 -0.2887 -0.2041
@@ -42,7 +42,7 @@ sphere  0.0 -100.0  0.0   100.0  ground
 sphere  0.0    1.4  0.0     0.5  mirror
 
 # obj 0 instance (translation) material
-obj 0    0.0  0.2887 0.0  glass
+obj 0 glass  t 0.0  0.2887 0.0  
 """
 
 def print_ring(f,y):
