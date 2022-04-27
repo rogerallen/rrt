@@ -1,5 +1,5 @@
 # camera lookfrom lookat  vup    vfov  aperture focus 
-camera   0 3.0 9    0 0.0 0  0 1 0  20.0  0.01      6.0
+camera   0 0 6    0 0.0 0  0 1 0  20.0  0.01      6.0
 
 # material name type options
 material ground lambertian 0.8 0.8 0.8
@@ -29,7 +29,7 @@ obj_tri 3 0 4
 obj_end
 
 # sphere x y z radius material
-sphere  0.0 -100.1  0.0   100.0  ground
+sphere  0.0 -101  0.0   100.0  ground
 #sphere 0.7311959341363677 0.25 0.1668907004672358 0.1 red
 #sphere 0.32541280433816844 0.25 0.6757266509268145 0.1 orange
 #sphere -0.32541280433816855 0.25 0.6757266509268144 0.1 yellow
@@ -58,4 +58,4 @@ sphere  -0.25 0.1 -1.0 0.1 green
 sphere  -0.25 0.1 -1.2 0.1 yellow
 
 # obj 0 instance (translation) material
-obj 0 glass trans  -0.5   0.0   -0.5    
+obj 0 yellow r 180 1 0 0 r 45 0 1 0  t -0.5 0 0    
