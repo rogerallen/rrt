@@ -10,8 +10,6 @@
 #
 import math
 
-
-
 def print_tetrahedron():
     print("# tetrahedron 4 verts 4 tris")
     print("obj_beg 4 4")
@@ -66,7 +64,7 @@ def print_cube():
         for z in [-0.5,0.5]:
             for x in [-0.5,0.5]:
                 print(f"obj_vtx {x: 3.5f} {y: 3.5f} {z: 3.5f}")
-    print("obj_tri 0 5 1")
+    print("obj_tri 0 5 1") # sides
     print("obj_tri 0 4 5")
     print("obj_tri 1 5 7")
     print("obj_tri 1 7 3")
@@ -81,7 +79,17 @@ def print_cube():
     print("obj_end")
     print()
 
+def print_instance_checkerboard(n,num,mat1,mat2):
+    print("# checkerboard")
+    for i in range(n):
+        for j in range(n):
+            x = i - 4
+            y = j - 4
+            mat = mat1 if ((i ^ j) % 2 == 0) else mat2
+            print(f"obj {num} {mat:<10s} t {x: 3.5f} 0.0 {y: 3.5f}")
+
 print_tetrahedron()
 print_pyramid()
 print_square()
 print_cube()
+print_instance_checkerboard(8,0,"red","black")

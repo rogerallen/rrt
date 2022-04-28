@@ -1,6 +1,15 @@
-# camera lookfrom lookat  vup    vfov  aperture focus 
-camera   -1 0.25 5    0 0.25 0  0 1 0  15.0  0.01      6.0
+#!/usr/bin/python3
 
+import math
+
+def camera(from_x, from_y, from_z):
+    return f"""
+# camera lookfrom  lookat   vup    vfov  aperture focus 
+camera   {from_x} {from_y} {from_z}  0 {from_y} 0  0 1 0  15.0  0.01   6.0
+"""
+
+def materials():
+    return f"""
 # material name type options
 material ground lambertian 0.8 0.8 0.8
 material white  lambertian 0.95 0.95 0.95
@@ -15,8 +24,11 @@ material violet lambertian 0.6 0.0 0.8
 material mirror metal      0.8 0.8 0.8   0.01
 material chrome metal      0.8 0.8 0.8   0.1
 material bronze metal      0.8 0.7 0.0   0.1
-material glass  dielectric 1.5
+material glass  dielectric 2.33
+"""
 
+def objects():
+    return f"""
 # 0 square 4 verts, 2 tris
 obj_beg 4 2
 obj_vtx -0.50000  0.00000 -0.50000
@@ -121,3 +133,15 @@ obj 0 black      t  3.00000 0.0  0.00000
 obj 0 red        t  3.00000 0.0  1.00000
 obj 0 black      t  3.00000 0.0  2.00000
 obj 0 red        t  3.00000 0.0  3.00000
+"""
+
+for i in range(0,200+1,1):
+    from_x = -1 + i/100.0   
+    from_y = 0.25
+    from_z = 5.0
+    with open(f"anim3_{i:03d}.txt", 'w') as f:
+        print(camera(from_x,from_y,from_z), file=f)
+        print(materials(), file=f)
+        print(objects(), file=f)
+
+        
