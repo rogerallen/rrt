@@ -35,7 +35,7 @@ class vec3 {
     HOSTDEV FP_T operator[](int i) const { return e[i]; }
     HOSTDEV FP_T &operator[](int i) { return e[i]; }
 
-    HOSTDEV void print() const;
+    HOSTDEV inline void print() const;
 
     HOSTDEV vec3 &operator+=(const vec3 &v)
     {
@@ -120,7 +120,7 @@ HOSTDEV inline vec3 cross(const vec3 &u, const vec3 &v)
                 u.e[0] * v.e[1] - u.e[1] * v.e[0]);
 }
 
-HOSTDEV void vec3::print() const { printf("%f %f %f", e[0], e[1], e[2]); }
+HOSTDEV inline void vec3::print() const { printf("%f %f %f", e[0], e[1], e[2]); }
 
 HOSTDEV inline vec3 unit_vector(vec3 v) { return v / v.length(); }
 

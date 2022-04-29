@@ -6,7 +6,7 @@
 //   2 - 1    indices should go around in CCW direction
 //   |  /     so that the normal is cross(0->1,0->2)
 //   0
-__device__ vec3 get_normal(vec3 v0, vec3 v1, vec3 v2)
+DEV vec3 get_normal(vec3 v0, vec3 v1, vec3 v2)
 {
     vec3 v01 = unit_vector(v1 - v0);
     vec3 v02 = unit_vector(v2 - v0);
@@ -16,22 +16,22 @@ __device__ vec3 get_normal(vec3 v0, vec3 v1, vec3 v2)
 
 class triangle : public hittable {
   public:
-    __device__ triangle() {}
-    __device__ triangle(vec3 v0, vec3 v1, vec3 v2, material *m) : mat_ptr(m)
+    DEV triangle() {}
+    DEV triangle(vec3 v0, vec3 v1, vec3 v2, material_ptr_t m) : mat_ptr(m)
     {
         vertices[0] = v0;
         vertices[1] = v1;
         vertices[2] = v2;
         normal = get_normal(v0, v1, v2);
     };
-    __device__ virtual bool hit(const ray &r, FP_T tmin, FP_T tmax, hit_record &rec, bool debug) const;
-    __device__ virtual void print(int i) const;
+    DEV virtual bool hit(const ray &r, FP_T tmin, FP_T tmax, hit_record &rec, bool debug) const;
+    DEV virtual void print(int i) const;
     vec3 vertices[3];
     vec3 normal;
-    material *mat_ptr;
+    material_ptr_t mat_ptr;
 };
 
-__device__ bool triangle::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
+DEV bool triangle::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
 {
     // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
     const FP_T EPSILON = 0.0000001;
@@ -73,7 +73,7 @@ __device__ bool triangle::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &
     return false;
 }
 
-__device__ void triangle::print(int i) const
+DEV void triangle::print(int i) const
 {
     mat_ptr->print(i);
     printf("triangle ");

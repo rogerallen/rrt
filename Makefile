@@ -17,21 +17,21 @@ NVCC_DBG       = -lineinfo -O3 --expt-relaxed-constexpr
 
 NVCC_FLAGS     = -ccbin $(HOST_COMPILER) -m64 $(NVCC_DBG) $(NVCC_GENCODE)
 
-SRCS = main.cu
+SRCS = main.cpp rrt.cu
 INCS = vec3.h ray.h hittable.h hittable_list.h sphere.h triangle.h camera.h material.h scene.h stb_image_write.h
 
 # default
-all: scenes/test1.png 
+all: rrt rrtc
 #  scenes/test2.png scenes/checkerboard.png scenes/final.png scenes/test1_d.png scenes/test2_d.png scenes/checkerboard_d.png scenes/final_d.png
 
 rrt: $(SRCS) $(INCS)
-	$(NVCC) $(NVCC_FLAGS) -o $@ -DFP_T=float main.cu
+	$(NVCC) $(NVCC_FLAGS) -DFP_T=float -DUSE_CUDA main.cpp rrt.cu -o $@ 
 
 rrtd: $(SRCS) $(INCS)
-	$(NVCC) $(NVCC_FLAGS) -o $@ -DFP_T=double main.cu
+	$(NVCC) $(NVCC_FLAGS) -DFP_T=double main.cu -o $@ 
 
-rrtc: rrt.cpp $(INCS)
-	$(NVCC) $(NVCC_DBG) rrt.cpp -o $@
+rrtc: main.cpp rrt.cpp $(INCS)
+	$(NVCC) $(NVCC_DBG) -DFP_T=float main.cpp rrt.cpp -o $@
 
 # ??? 
 #%.png: %.txt rtt

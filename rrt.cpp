@@ -1,12 +1,13 @@
-#include "rtweekend.h"
+#include "rrt.h"
 
 #include "camera.h"
-#include "color.h"
 #include "hittable_list.h"
 #include "material.h"
 #include "sphere.h"
+#include "triangle.h"
 
 #include <iostream>
+
 color ray_color(const ray &r, const hittable &world, int depth, bool debug)
 {
     hit_record rec;
@@ -14,7 +15,7 @@ color ray_color(const ray &r, const hittable &world, int depth, bool debug)
     // If we've exceeded the ray bounce limit, no more light is gathered.
     if (depth <= 0) return color(0, 0, 0);
 
-    if (world.hit(r, 0.001, infinity, rec)) {
+    if (world.hit(r, 0.001, infinity, rec, false)) {
         ray scattered;
         color attenuation;
         if (rec.mat_ptr->scatter(r, rec, attenuation, scattered, debug)) {
@@ -85,34 +86,23 @@ hittable_list random_scene()
     return world;
 }
 
-int main()
+vec3 *Rrt::render(scene *the_scene)
 {
 
-    // Image
-
-    const auto aspect_ratio = 3.0 / 2.0;
-    const int image_width = 1200;
-    const int image_height = static_cast<int>(image_width / aspect_ratio);
-    const int samples_per_pixel = 10; // 500
-    const int max_depth = 50;
-
-    // World
-
+    // World - FIXME use the_scene
     auto world = random_scene();
 
     // Camera
-
     point3 lookfrom(13, 2, 3);
     point3 lookat(0, 0, 0);
     vec3 vup(0, 1, 0);
     auto dist_to_focus = 10.0;
     auto aperture = 0.1;
-
     camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
 
-    // Render
-    std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+    fb = new vec3[image_width * image_height];
 
+    // Render
     for (int j = image_height - 1; j >= 0; --j) {
         std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
         for (int i = 0; i < image_width; ++i) {
@@ -131,9 +121,9 @@ int main()
             if (debug) {
                 printf("DEBUG ij %d %d rgb %f %f %f\n", i, j, pixel_color.x(), pixel_color.y(), pixel_color.z());
             }
-            write_color(std::cout, pixel_color, samples_per_pixel);
+            fb[j * image_width + i] = pixel_color;
         }
     }
 
-    std::cerr << "\nDone.\n";
+    return fb;
 }
