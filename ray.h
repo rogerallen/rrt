@@ -1,21 +1,25 @@
-#ifndef RAYH
-#define RAYH
+#ifndef RAY_H
+#define RAY_H
+
 #include "vec3.h"
 
 class ray {
-  public:
-    __device__ ray() {}
-    __device__ ray(const vec3 &a, const vec3 &b)
-    {
-        A = a;
-        B = b;
-    }
-    __device__ vec3 origin() const { return A; }
-    __device__ vec3 direction() const { return B; }
-    __device__ vec3 point_at_parameter(FP_T t) const { return A + t * B; }
+    public:
+        DEV ray() {}
+        DEV ray(const point3& origin, const vec3& direction)
+            : orig(origin), dir(direction)
+        {}
 
-    vec3 A;
-    vec3 B;
+        DEV point3 origin() const  { return orig; }
+        DEV vec3 direction() const { return dir; }
+
+        DEV point3 at(FP_T t) const {
+            return orig + t*dir;
+        }
+
+    public:
+        point3 orig;
+        vec3 dir;
 };
 
 #endif

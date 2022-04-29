@@ -1,23 +1,20 @@
 #ifndef TRIANGLEH
 #define TRIANGLEH
 
-#include "hitable.h"
+#include "hittable.h"
 
 //   2 - 1    indices should go around in CCW direction
 //   |  /     so that the normal is cross(0->1,0->2)
 //   0
 __device__ vec3 get_normal(vec3 v0, vec3 v1, vec3 v2)
 {
-    vec3 v01 = v1 - v0;
-    v01.make_unit_vector();
-    vec3 v02 = v2 - v0;
-    v02.make_unit_vector();
-    vec3 c = cross(v01, v02);
-    c.make_unit_vector();
+    vec3 v01 = unit_vector(v1 - v0);
+    vec3 v02 = unit_vector(v2 - v0);
+    vec3 c = unit_vector(cross(v01, v02));
     return c;
 }
 
-class triangle : public hitable {
+class triangle : public hittable {
   public:
     __device__ triangle() {}
     __device__ triangle(vec3 v0, vec3 v1, vec3 v2, material *m) : mat_ptr(m)
@@ -64,8 +61,8 @@ __device__ bool triangle::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &
         // need to handle the t_min, t_max bit...
         if ((t > t_min) && (t < t_max)) {
             rec.t = t;
-            rec.p = r.point_at_parameter(rec.t);
-            rec.normal = normal;
+            rec.p = r.at(rec.t);
+            rec.set_face_normal(r, normal);
             rec.mat_ptr = mat_ptr;
             return true;
         }

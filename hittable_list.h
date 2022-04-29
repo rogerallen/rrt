@@ -1,39 +1,117 @@
-#ifndef HITABLELISTH
-#define HITABLELISTH
+#ifndef HITTABLE_LIST_H
+#define HITTABLE_LIST_H
 
-#include "hitable.h"
+#include "hittable.h"
 
-class hitable_list : public hitable {
+#ifndef USE_CUDA
+#include <memory>
+#include <vector>
+using std::shared_ptr;
+#endif
+
+class hittable_list : public hittable {
   public:
-    __device__ hitable_list() {}
-    __device__ hitable_list(hitable **l, int n)
+    DEV hittable_list()
     {
-        list = l;
-        list_size = n;
+#ifdef USE_CUDA
+        objects_size = 0;
+        objects_reserve = 0;
+#endif
     }
-    __device__ virtual bool hit(const ray &r, FP_T tmin, FP_T tmax, hit_record &rec, bool debug) const;
-    __device__ virtual void print(int i) const;
-    hitable **list;
-    int list_size;
+
+#ifdef USE_CUDA
+    DEV ~hittable_list()
+    {
+        // NOTE -- this is deleting all of the objects passed to you
+        // this works for our use case, but might not be best practice
+        for (int i = 0; i < objects_size; i++) {
+            delete objects[i];
+        }
+        delete[] objects;
+    }
+#endif
+
+    DEV hittable_list(hittable_ptr_t object) { add(object); }
+
+    DEV void clear()
+    {
+#ifndef USE_CUDA
+        objects.clear();
+#else
+        for (int i = 0; i < objects_size; i++) {
+            delete objects[i];
+        }
+        objects_size = 0;
+#endif
+    }
+
+    DEV void add(hittable_ptr_t object)
+    {
+#ifndef USE_CUDA
+        objects.push_back(object);
+#else
+        if (objects_size == objects_reserve) {
+            increment_reserve();
+        }
+        objects[objects_size++] = object;
+#endif
+    }
+
+#ifdef USE_CUDA
+    DEV void increment_reserve()
+    {
+        // increment reserve
+        objects_reserve += OBJECTS_COUNT;
+        hittable **new_objects = new hittable *[objects_reserve]; // FIXME new might fail someday
+        // copy from old to new
+        for (int i = 0; i < objects_size; i++) {
+            new_objects[i] = objects[i];
+        }
+        // get rid of old
+        delete[] objects;
+        // start using new
+        objects = new_objects;
+    }
+#endif
+
+    DEV virtual bool hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const override;
+    DEV virtual void print(int i) const override;
+
+  public: // FIXME?  why public?
+#ifndef USE_CUDA
+    std::vector<shared_ptr<hittable>> objects;
+#else
+    hittable **objects;
+    int objects_size;            // how many actual objects
+    int objects_reserve;         // how many objects can we handle
+    const int OBJECTS_COUNT = 4; // how many objects to allocate and increment
+#endif
 };
 
-__device__ bool hitable_list::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
+DEV bool hittable_list::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
 {
     hit_record temp_rec;
     bool hit_anything = false;
-    FP_T closest_so_far = t_max;
-    for (int i = 0; i < list_size; i++) {
+    auto closest_so_far = t_max;
+
+#ifndef USE_CUDA
+    for (const auto &object : objects) {
+#else
+    for (int i = 0; i < objects_size; i++) {
         if (debug) printf("DEBUG hit test %d\n", i);
-        if (list[i]->hit(r, t_min, closest_so_far, temp_rec, debug)) {
+        hittable *object = objects[i];
+#endif
+        if (object->hit(r, t_min, closest_so_far, temp_rec, debug)) {
             hit_anything = true;
             closest_so_far = temp_rec.t;
             rec = temp_rec;
             if (debug) printf("DEBUG ! hit !\n");
         }
     }
+
     return hit_anything;
 }
 
-__device__ void hitable_list::print(int i) const { printf("hitable_list print %d?\n", i); }
+DEV void hittable_list::print(int i) const { printf("hitable_list print %d?\n", i); }
 
 #endif

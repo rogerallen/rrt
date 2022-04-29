@@ -12,7 +12,12 @@
 - [x] select device
 - [x] shared-memory sample reduction
 - [x] triangle-based objects
+- [x] modernize code from class
+- [ ] split main.cu into main.cpp & rrt.cu
+- [ ] add PNG to cpp path
+- [ ] cmake build
 - [ ] input list of scenes to render
+- [ ] add pybind11 to enable running from python
 
 ## Status
 

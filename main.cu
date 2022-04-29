@@ -1,15 +1,16 @@
-// requires that you define FP_T as float or double
+// NOTE: define USE_FLOAT_NOT_DOUBLE on compiler commandline to
+// control use of 'float' rather than 'double' for floating-point
+// type 'FP_T'
+#define USE_CUDA
+
+#include "rtweekend.h"
+
 #include "camera.h"
-#include "hitable_list.h"
-#include "material.h"
-#include "ray.h"
+#include "color.h"
+#include "hittable_list.h"
 #include "scene.h"
 #include "sphere.h"
 #include "triangle.h"
-#include "vec3.h"
-#include <assert.h>
-#include <curand_kernel.h>
-#include <float.h>
 #include <iostream>
 #include <time.h>
 
@@ -36,87 +37,84 @@ void check_cuda(cudaError_t result, char const *const func, const char *const fi
     }
 }
 
-// Matching the C++ code would recurse enough into color() calls that
-// it was blowing up the stack, so we have to turn this into a
-// limited-depth loop instead.  Later code in the book limits to a max
-// depth of 50, so we adapt this a few chapters early on the GPU.
-__device__ vec3 color(const ray &r, hitable **world, curandState *local_rand_state, bool debug)
+__device__ color ray_color(const ray &r, hittable **world, int max_depth, curandState *local_rand_state, bool debug)
 {
+    // update cur_ray & cur_attenuation in your loop
     ray cur_ray = r;
-    vec3 cur_attenuation = vec3(1.0, 1.0, 1.0);
-    for (int i = 0; i < 50; i++) {
+    color cur_attenuation(1, 1, 1);
+    for (int i = 0; i < max_depth; i++) {
         hit_record rec;
-        if ((*world)->hit(cur_ray, 0.001f, FLT_MAX, rec, debug)) {
+        if ((*world)->hit(cur_ray, 0.001f, infinity, rec, debug)) {
+            // hit something, adjust cur_attenuation
+            // and update cur_ray per the diffuse calculation
             ray scattered;
-            vec3 attenuation;
-            if (rec.mat_ptr->scatter(cur_ray, rec, attenuation, scattered, local_rand_state)) {
-                cur_attenuation *= attenuation;
+            color attenuation;
+            if (rec.mat_ptr->scatter(local_rand_state, cur_ray, rec, attenuation, scattered, debug)) {
+                if (debug)
+                    printf("DEBUG hit scat=%f %f %f -> %f %f %f\n", scattered.orig.x(), scattered.orig.y(),
+                           scattered.orig.z(), scattered.dir.x(), scattered.dir.y(), scattered.dir.z());
+                cur_attenuation = cur_attenuation * attenuation;
                 cur_ray = scattered;
+                if (debug)
+                    printf("DEBUG hit c=%f %f %f att=%f %f %f\n", cur_attenuation.x(), cur_attenuation.y(),
+                           cur_attenuation.z(), attenuation.x(), attenuation.y(), attenuation.z());
             }
             else {
-                return vec3(0.0, 0.0, 0.0);
+                return color(0, 0, 0);
             }
         }
         else {
+            // hit sky, attenuate the sky color and return
             vec3 unit_direction = unit_vector(cur_ray.direction());
-            FP_T t = 0.5f * (unit_direction.y() + 1.0f);
-            vec3 c = (1.0f - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
-            return cur_attenuation * c;
+            auto t = 0.5 * (unit_direction.y() + 1.0);
+            vec3 c = (1.0 - t) * color(1, 1, 1) + t * color(0.5, 0.7, 1.0);
+            c = cur_attenuation * c;
+            if (debug) printf("DEBUG sky t=%f c=%f %f %f\n", t, c.x(), c.y(), c.z());
+            return c;
         }
     }
-    return vec3(0.0, 0.0, 0.0); // exceeded recursion
+    return color(0, 0, 0); // exceeded recursion
 }
 
-__global__ void rand_init(curandState *rand_state)
-{
-    if (threadIdx.x == 0 && blockIdx.x == 0) {
-        curand_init(1984, 0, 0, rand_state);
-    }
-}
-
-__global__ void render_init(int max_x, int max_y, curandState *rand_state)
+__global__ void render_init(int image_width, int image_height, curandState *rand_state)
 {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
-    if ((i >= max_x) || (j >= max_y)) return;
-    int pixel_index = j * max_x + i;
-    // Original: Each thread gets same seed, a different sequence number, no
-    // offset curand_init(1984, pixel_index, 0, &rand_state[pixel_index]);
-    // BUGFIX, see Issue#2: Each thread gets different seed, same sequence for
-    // performance improvement of about 2x!
+    if ((i >= image_width) || (j >= image_height)) return;
+    int pixel_index = j * image_width + i;
+    // Each thread gets same seed, a different sequence number, no offset
     curand_init(1984 + pixel_index, 0, 0, &rand_state[pixel_index]);
 }
 
 __global__ void
-// hmm, when shmooing, remove this
+// may be useful
 //__launch_bounds__(64, 12) // maxThreadsPerBlock, minBlocksPerMultiprocessor
-render(vec3 *fb, int max_x, int max_y, int num_samples, camera **cam, hitable **world, curandState *rand_state)
+render(vec3 *fb, int image_width, int image_height, int samples_per_pixel, camera **cam, hittable **world,
+       int max_depth, curandState *d_rand_state)
 {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
-    if ((i >= max_x) || (j >= max_y)) return;
-    int pixel_index = j * max_x + i;
-    curandState local_rand_state = rand_state[pixel_index];
+    int pixel_index = j * image_width + i;
+    if ((i >= image_width) || (j >= image_height)) return;
+    curandState local_rand_state = d_rand_state[pixel_index];
     bool debug = false;
-#if 0
-    if ((i == 600) && (j == 600)) {
+    if ((i == 600) && (j == 400)) {
+        printf("DEBUG ij %d %d\n", i, j);
         debug = true;
-        printf("DEBUG i=%d j=%d\n", i, j);
     }
-#endif
-    vec3 col(0, 0, 0);
-    for (int s = 0; s < num_samples; s++) {
-        FP_T u = FP_T(i + curand_uniform(&local_rand_state)) / FP_T(max_x);
-        FP_T v = FP_T(j + curand_uniform(&local_rand_state)) / FP_T(max_y);
-        ray r = (*cam)->get_ray(u, v, &local_rand_state);
-        col += color(r, world, &local_rand_state, debug);
+    //  from C++ Render inner loop
+    color pixel_color(0, 0, 0);
+    for (int s = 0; s < samples_per_pixel; ++s) {
+        auto u = FP_T(i + random_uniform(&local_rand_state)) / (image_width - 1);
+        auto v = FP_T(j + random_uniform(&local_rand_state)) / (image_height - 1);
+        ray r = (*cam)->get_ray(&local_rand_state, u, v);
+        pixel_color += ray_color(r, world, max_depth, &local_rand_state, debug);
     }
-    rand_state[pixel_index] = local_rand_state;
-    col /= FP_T(num_samples);
-    col[0] = sqrt(col[0]);
-    col[1] = sqrt(col[1]);
-    col[2] = sqrt(col[2]);
-    fb[pixel_index] = col;
+    if (debug) {
+        printf("DEBUG ij %d %d rgb %f %f %f\n", i, j, pixel_color.x(), pixel_color.y(), pixel_color.z());
+    }
+    d_rand_state[pixel_index] = local_rand_state;
+    fb[pixel_index] = pixel_color;
 }
 
 __global__ void render_init2(int max_x, int max_y, curandState *rand_state)
@@ -130,7 +128,8 @@ __global__ void render_init2(int max_x, int max_y, curandState *rand_state)
     curand_init(1984 + sample_index, 0, 0, &rand_state[sample_index]);
 }
 
-__global__ void render2(vec3 *fb, int max_x, int max_y, camera **cam, hitable **world, curandState *rand_state)
+__global__ void render2(vec3 *fb, int max_x, int max_y, camera **cam, hittable **world, int max_depth,
+                        curandState *rand_state)
 {
     extern __shared__ vec3 samples[];
     int i = blockIdx.x;
@@ -143,8 +142,8 @@ __global__ void render2(vec3 *fb, int max_x, int max_y, camera **cam, hitable **
     curandState local_rand_state = rand_state[sample_index];
     FP_T u = FP_T(i + curand_uniform(&local_rand_state)) / FP_T(max_x);
     FP_T v = FP_T(j + curand_uniform(&local_rand_state)) / FP_T(max_y);
-    ray r = (*cam)->get_ray(u, v, &local_rand_state);
-    samples[k] = color(r, world, &local_rand_state, false);
+    ray r = (*cam)->get_ray(&local_rand_state, u, v);
+    samples[k] = ray_color(r, world, max_depth, &local_rand_state, false);
     rand_state[sample_index] = local_rand_state;
     // reduce samples into col (see Fig 5.15 in Programming Massively Parallel Computers)
     for (int stride = max_s / 2; stride >= 1; stride = stride >> 1) {
@@ -153,15 +152,9 @@ __global__ void render2(vec3 *fb, int max_x, int max_y, camera **cam, hitable **
             samples[k] += samples[k + stride];
         }
     }
-    // scale reduced sample
-    vec3 col(samples[0] / FP_T(max_s));
-    // gamma correction
-    col[0] = sqrt(col[0]);
-    col[1] = sqrt(col[1]);
-    col[2] = sqrt(col[2]);
     // only thread 0 writes to the framebuffer
     if (k == 0) {
-        fb[pixel_index] = col;
+        fb[pixel_index] = samples[0];
     }
 }
 
@@ -232,17 +225,20 @@ __global__ void free_world(hitable **d_hitables, hitable **d_world,
     delete *d_camera;
 }
 #else
-__global__ void create_world(hitable **d_world, scene_camera *d_scene_camera, camera **d_camera, int num_materials,
+__global__ void create_world(hittable **d_world, scene_camera *d_scene_camera, camera **d_camera, int num_materials,
                              scene_material *d_scene_materials, material **d_materials, int num_spheres,
                              scene_sphere *d_scene_spheres, int num_triangles,
-                             scene_instance_triangle *d_scene_triangles, hitable **d_hitables, int image_width,
-                             int image_height)
+                             scene_instance_triangle *d_scene_triangles, // hittable **d_hittables,
+                             int image_width, int image_height)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
 
-        *d_camera = new camera(d_scene_camera->lookfrom, d_scene_camera->lookat, d_scene_camera->vup,
-                               (FP_T)d_scene_camera->vfov, FP_T(image_width) / FP_T(image_height),
-                               (FP_T)d_scene_camera->aperture, (FP_T)d_scene_camera->focus);
+        *d_world = new hittable_list();
+
+        *d_camera =
+            new camera(d_scene_camera->lookfrom, d_scene_camera->lookat, d_scene_camera->vup,
+                       (FP_T)d_scene_camera->vfov, FP_T(image_width) / FP_T(image_height), // pass in aspect_ratio FIXME
+                       (FP_T)d_scene_camera->aperture, (FP_T)d_scene_camera->focus);
 
         for (int i = 0; i < num_materials; ++i) {
             scene_material *m = &(d_scene_materials[i]);
@@ -257,30 +253,29 @@ __global__ void create_world(hitable **d_world, scene_camera *d_scene_camera, ca
             }
         }
 
-        int i = 0;
-        for (; i < num_spheres; ++i) {
+        for (int i = 0; i < num_spheres; ++i) {
             scene_sphere *s = &(d_scene_spheres[i]);
-            d_hitables[i] = new sphere(s->center, s->radius, d_materials[s->material_idx]);
+            ((hittable_list *)*d_world)->add(new sphere(s->center, s->radius, d_materials[s->material_idx]));
         }
-        // keep using i to index into hitables...
-        for (int j = 0; j < num_triangles; ++j) {
-            scene_instance_triangle *t = &(d_scene_triangles[j]);
-            d_hitables[i++] =
-                new triangle(t->vertices[0], t->vertices[1], t->vertices[2], d_materials[t->material_idx]);
+        for (int i = 0; i < num_triangles; ++i) {
+            scene_instance_triangle *t = &(d_scene_triangles[i]);
+            ((hittable_list *)*d_world)
+                ->add(new triangle(t->vertices[0], t->vertices[1], t->vertices[2], d_materials[t->material_idx]));
         }
-
-        *d_world = new hitable_list(d_hitables, num_spheres + num_triangles);
     }
 }
-__global__ void free_world(int num_materials, material **d_materials, int num_spheres, hitable **d_hitables,
-                           hitable **d_world, camera **d_camera)
+__global__ void free_world(int num_materials, material **d_materials, int num_spheres, // hittable **d_hittables,
+                           hittable **d_world, camera **d_camera)
 {
+    // ??? who frees these? FIXME  hmm delete[] d_materials?
     for (int i = 0; i < num_materials; i++) {
         delete d_materials[i];
     }
+#if 0
     for (int i = 0; i < num_spheres; i++) {
-        delete d_hitables[i];
+        delete d_hittables[i];
     }
+#endif
     delete *d_world;
     delete *d_camera;
 }
@@ -333,6 +328,7 @@ int main(int argc, char *argv[])
     scene *the_scene = nullptr;
     char *png_filename = nullptr;
     bool use_render2 = false;
+    int max_depth = 50; // FIXME add commandline
 
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
@@ -421,15 +417,15 @@ int main(int argc, char *argv[])
     else {
         checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * num_samples * sizeof(curandState)));
     }
-    curandState *d_rand_state2;
-    checkCudaErrors(cudaMalloc((void **)&d_rand_state2, 1 * sizeof(curandState)));
+    // curandState *d_rand_state2;
+    // checkCudaErrors(cudaMalloc((void **)&d_rand_state2, 1 * sizeof(curandState)));
 
     // we need that 2nd random state to be initialized for the world creation
-    rand_init<<<1, 1>>>(d_rand_state2);
-    checkCudaErrors(cudaGetLastError());
-    checkCudaErrors(cudaDeviceSynchronize());
+    // rand_init<<<1, 1>>>(d_rand_state2);
+    // checkCudaErrors(cudaGetLastError());
+    // checkCudaErrors(cudaDeviceSynchronize());
 
-    // make our world of hitables & the camera
+    // make our world of hittables & the camera
 #if 0
     hitable **d_hitables;
     int num_hitables = 22 * 22 + 1 + 3;
@@ -476,16 +472,16 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
     material **d_materials;
     checkCudaErrors(cudaMalloc((void **)&d_materials, num_materials * sizeof(material *)));
-    hitable **d_hitables;
-    int num_hitables = num_instance_triangles + num_spheres;
-    std::cerr << "num_hitables = " << num_hitables << "\n";
-    checkCudaErrors(cudaMalloc((void **)&d_hitables, num_hitables * sizeof(hitable *)));
-    hitable **d_world;
-    checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hitable *)));
+    // hittable **d_hittables;
+    int num_hittables = num_instance_triangles + num_spheres;
+    std::cerr << "num_hittables = " << num_hittables << "\n";
+    // checkCudaErrors(cudaMalloc((void **)&d_hittables, num_hittables * sizeof(hittable *)));
+    hittable **d_world;
+    checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hittable *)));
 
     create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,
-                           num_spheres, d_scene_spheres, num_instance_triangles, d_instance_triangles, d_hitables,
-                           image_width, image_height);
+                           num_spheres, d_scene_spheres, num_instance_triangles, d_instance_triangles, // d_hittables,
+                           image_width, image_height); // FIXME use aspect_ratio
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 #endif
@@ -513,15 +509,17 @@ int main(int argc, char *argv[])
     }
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
+
     if (!use_render2) {
         // note that render has __launch_bounds__ of maxThreadsPerBlock=64, minBlocksPerMultiprocessor=12
-        render<<<blocks, threads>>>(fb, image_width, image_height, num_samples, d_camera, d_world, d_rand_state);
+        render<<<blocks, threads>>>(fb, image_width, image_height, num_samples, d_camera, d_world, max_depth,
+                                    d_rand_state);
     }
     else {
         // render one pixel = one block.  Thread.x is the sample count.
         threads.x = num_samples;
         render2<<<blocks, threads, num_samples * sizeof(vec3)>>>(fb, image_width, image_height, d_camera, d_world,
-                                                                 d_rand_state);
+                                                                 max_depth, d_rand_state);
     }
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
@@ -542,14 +540,11 @@ int main(int argc, char *argv[])
     // Output FB as Image
     if (png_filename == nullptr) {
         // default to PPM to stdout
-        std::cout << "P3\n" << image_width << " " << image_height << "\n255\n";
-        for (int j = image_height - 1; j >= 0; j--) {
-            for (int i = 0; i < image_width; i++) {
+        std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+        for (int j = image_height - 1; j >= 0; --j) {
+            for (int i = 0; i < image_width; ++i) {
                 size_t pixel_index = j * image_width + i;
-                int ir = int(255.99 * fb[pixel_index].r());
-                int ig = int(255.99 * fb[pixel_index].g());
-                int ib = int(255.99 * fb[pixel_index].b());
-                std::cout << ir << " " << ig << " " << ib << "\n";
+                write_color(std::cout, fb[pixel_index], num_samples);
             }
         }
     }
@@ -560,9 +555,11 @@ int main(int argc, char *argv[])
             for (int i = 0; i < image_width; i++) {
                 size_t fb_idx = j * image_width + i;
                 size_t cpu_fb_idx = k * image_width * 3 + i * 3;
-                cpu_fb[cpu_fb_idx + 0] = uint8_t(255.99 * fb[fb_idx].r());
-                cpu_fb[cpu_fb_idx + 1] = uint8_t(255.99 * fb[fb_idx].g());
-                cpu_fb[cpu_fb_idx + 2] = uint8_t(255.99 * fb[fb_idx].b());
+                int red, grn, blu;
+                convert_color(fb[fb_idx], num_samples, &red, &grn, &blu);
+                cpu_fb[cpu_fb_idx + 0] = uint8_t(red);
+                cpu_fb[cpu_fb_idx + 1] = uint8_t(grn);
+                cpu_fb[cpu_fb_idx + 2] = uint8_t(blu);
             }
         }
         stbi_write_png(png_filename, image_width, image_height, 3, (const void *)cpu_fb,
@@ -573,9 +570,10 @@ int main(int argc, char *argv[])
     // clean up
     checkCudaErrors(cudaDeviceSynchronize());
 #if 0
-    free_world<<<1, 1>>>(d_hitables, d_world, d_camera);
+    free_world<<<1, 1>>>(d_hittables, d_world, d_camera);
 #else
-    free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, d_hitables, d_world, d_camera);
+    free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, // d_hittables,
+                         d_world, d_camera);
 #endif
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaFree(d_scene_camera));
@@ -583,7 +581,7 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaFree(d_scene_spheres));
     checkCudaErrors(cudaFree(d_world));
     checkCudaErrors(cudaFree(d_rand_state));
-    checkCudaErrors(cudaFree(d_rand_state2));
+    // checkCudaErrors(cudaFree(d_rand_state2));
     checkCudaErrors(cudaFree(fb));
 
     if (the_scene) {
