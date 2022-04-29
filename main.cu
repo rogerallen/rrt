@@ -98,10 +98,12 @@ render(vec3 *fb, int image_width, int image_height, int samples_per_pixel, camer
     if ((i >= image_width) || (j >= image_height)) return;
     curandState local_rand_state = d_rand_state[pixel_index];
     bool debug = false;
+#if 0
     if ((i == 600) && (j == 400)) {
         printf("DEBUG ij %d %d\n", i, j);
         debug = true;
     }
+#endif
     //  from C++ Render inner loop
     color pixel_color(0, 0, 0);
     for (int s = 0; s < samples_per_pixel; ++s) {
@@ -117,119 +119,10 @@ render(vec3 *fb, int image_width, int image_height, int samples_per_pixel, camer
     fb[pixel_index] = pixel_color;
 }
 
-__global__ void render_init2(int max_x, int max_y, curandState *rand_state)
-{
-    int i = blockIdx.x;
-    int j = blockIdx.y;
-    int k = threadIdx.x;
-    int max_s = blockDim.x;
-    if ((i >= max_x) || (j >= max_y) || (k >= max_s)) return;
-    int sample_index = j * (max_x * max_s) + i * max_s + k;
-    curand_init(1984 + sample_index, 0, 0, &rand_state[sample_index]);
-}
-
-__global__ void render2(vec3 *fb, int max_x, int max_y, camera **cam, hittable **world, int max_depth,
-                        curandState *rand_state)
-{
-    extern __shared__ vec3 samples[];
-    int i = blockIdx.x;
-    int j = blockIdx.y;
-    int k = threadIdx.x; // cur_sample
-    int max_s = blockDim.x;
-    if ((i >= max_x) || (j >= max_y) || (k >= max_s)) return;
-    int pixel_index = j * max_x + i;
-    int sample_index = j * (max_x * max_s) + i * max_s + k;
-    curandState local_rand_state = rand_state[sample_index];
-    FP_T u = FP_T(i + curand_uniform(&local_rand_state)) / FP_T(max_x);
-    FP_T v = FP_T(j + curand_uniform(&local_rand_state)) / FP_T(max_y);
-    ray r = (*cam)->get_ray(&local_rand_state, u, v);
-    samples[k] = ray_color(r, world, max_depth, &local_rand_state, false);
-    rand_state[sample_index] = local_rand_state;
-    // reduce samples into col (see Fig 5.15 in Programming Massively Parallel Computers)
-    for (int stride = max_s / 2; stride >= 1; stride = stride >> 1) {
-        __syncthreads();
-        if (k < stride) {
-            samples[k] += samples[k + stride];
-        }
-    }
-    // only thread 0 writes to the framebuffer
-    if (k == 0) {
-        fb[pixel_index] = samples[0];
-    }
-}
-
-#define RND (curand_uniform(&local_rand_state))
-
-#if 0
-__global__ void create_world(hitable **d_hitables, hitable **d_world,
-                             camera **d_camera, int image_width,
-                             int image_height, curandState *rand_state)
-{
-    if (threadIdx.x == 0 && blockIdx.x == 0) {
-        curandState local_rand_state = *rand_state;
-        d_hitables[0] = new sphere(vec3(0, -1000.0, -1), 1000,
-                               new lambertian(vec3(0.5, 0.5, 0.5)));
-        int i = 1;
-        for (int a = -11; a < 11; a++) {
-            for (int b = -11; b < 11; b++) {
-                float choose_mat = RND;
-                vec3 center(a + RND, 0.2, b + RND);
-                if (choose_mat < 0.8f) {
-                    d_hitables[i++] = new sphere(
-                        center, 0.2,
-                        new lambertian(vec3(RND * RND, RND * RND, RND * RND)));
-                }
-                else if (choose_mat < 0.95f) {
-                    d_hitables[i++] = new sphere(
-                        center, 0.2,
-                        new metal(vec3(0.5f * (1.0f + RND), 0.5f * (1.0f + RND),
-                                       0.5f * (1.0f + RND)),
-                                  0.5f * RND));
-                }
-                else {
-                    d_hitables[i++] = new sphere(center, 0.2, new dielectric(1.5));
-                }
-            }
-        }
-        d_hitables[i++] = new sphere(vec3(0, 1, 0), 1.0, new dielectric(1.5));
-        d_hitables[i++] = new sphere(vec3(-4, 1, 0), 1.0,
-                                 new lambertian(vec3(0.4, 0.2, 0.1)));
-        d_hitables[i++] =
-            new sphere(vec3(4, 1, 0), 1.0, new metal(vec3(0.7, 0.6, 0.5), 0.0));
-        *rand_state = local_rand_state;
-        *d_world = new hitable_list(d_hitables, 22 * 22 + 1 + 3);
-
-        for(int j = 0; j < i; j++) {
-            d_hitables[j]->print(j);
-        }
-
-        vec3 lookfrom(13, 2, 3);
-        vec3 lookat(0, 0, 0);
-        float dist_to_focus = 10.0;
-        (lookfrom - lookat).length();
-        float aperture = 0.1;
-        *d_camera = new camera(lookfrom, lookat, vec3(0, 1, 0), 30.0,
-                               float(image_width) / float(image_height),
-                               aperture, dist_to_focus);
-    }
-}
-
-__global__ void free_world(hitable **d_hitables, hitable **d_world,
-                           camera **d_camera)
-{
-    for (int i = 0; i < 22 * 22 + 1 + 3; i++) {
-        delete ((sphere *)d_hitables[i])->mat_ptr;
-        delete d_hitables[i];
-    }
-    delete *d_world;
-    delete *d_camera;
-}
-#else
 __global__ void create_world(hittable **d_world, scene_camera *d_scene_camera, camera **d_camera, int num_materials,
                              scene_material *d_scene_materials, material **d_materials, int num_spheres,
                              scene_sphere *d_scene_spheres, int num_triangles,
-                             scene_instance_triangle *d_scene_triangles, // hittable **d_hittables,
-                             int image_width, int image_height)
+                             scene_instance_triangle *d_scene_triangles, int image_width, int image_height)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
 
@@ -264,22 +157,16 @@ __global__ void create_world(hittable **d_world, scene_camera *d_scene_camera, c
         }
     }
 }
-__global__ void free_world(int num_materials, material **d_materials, int num_spheres, // hittable **d_hittables,
-                           hittable **d_world, camera **d_camera)
+__global__ void free_world(int num_materials, material **d_materials, int num_spheres, hittable **d_world,
+                           camera **d_camera)
 {
     // ??? who frees these? FIXME  hmm delete[] d_materials?
     for (int i = 0; i < num_materials; i++) {
         delete d_materials[i];
     }
-#if 0
-    for (int i = 0; i < num_spheres; i++) {
-        delete d_hittables[i];
-    }
-#endif
     delete *d_world;
     delete *d_camera;
 }
-#endif
 
 void query_cuda_info()
 {
@@ -313,7 +200,6 @@ void usage(char *argv)
     std::cerr << "  -ty <num_threads_y> : number of threads per block in y. (8)\n";
     std::cerr << "  -q                  : query devices & cuda info\n";
     std::cerr << "  -d <device number>  : use this device (default = 0)\n";
-    std::cerr << "  -2                  : use render2 algorithm\n";
     std::exit(1);
 }
 
@@ -327,7 +213,6 @@ int main(int argc, char *argv[])
     int num_threads_y = 8;
     scene *the_scene = nullptr;
     char *png_filename = nullptr;
-    bool use_render2 = false;
     int max_depth = 50; // FIXME add commandline
 
     for (int i = 1; i < argc; ++i) {
@@ -365,9 +250,6 @@ int main(int argc, char *argv[])
                 int device = atoi(argv[++i]);
                 checkCudaErrors(cudaSetDevice(device));
             }
-            else if (argv[i][1] == '2') {
-                use_render2 = true;
-            }
             else {
                 usage(argv[i]);
             }
@@ -385,14 +267,6 @@ int main(int argc, char *argv[])
     int num_blocks_x = image_width / num_threads_x + 1;
     int num_blocks_y = image_height / num_threads_y + 1;
 
-    if (use_render2) {
-        // one pixel per block
-        num_threads_x = 1;
-        num_threads_y = 1;
-        num_blocks_x = image_width;
-        num_blocks_y = image_height;
-    }
-
     int cuda_runtime_version = -1;
     checkCudaErrors(cudaRuntimeGetVersion(&cuda_runtime_version));
 
@@ -400,7 +274,7 @@ int main(int argc, char *argv[])
     std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << num_samples
               << " samples per pixel ";
     std::cerr << "in " << num_blocks_x << "x" << num_blocks_y << " = " << num_blocks_x * num_blocks_y << " blocks of "
-              << (use_render2 ? num_samples : num_threads_x) << "x" << num_threads_y << " threads each.\n";
+              << num_threads_x << "x" << num_threads_y << " threads each.\n";
 
     int num_pixels = image_width * image_height;
     size_t fb_size = num_pixels * sizeof(vec3);
@@ -411,35 +285,9 @@ int main(int argc, char *argv[])
 
     // allocate random state
     curandState *d_rand_state;
-    if (!use_render2) {
-        checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * sizeof(curandState)));
-    }
-    else {
-        checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * num_samples * sizeof(curandState)));
-    }
-    // curandState *d_rand_state2;
-    // checkCudaErrors(cudaMalloc((void **)&d_rand_state2, 1 * sizeof(curandState)));
-
-    // we need that 2nd random state to be initialized for the world creation
-    // rand_init<<<1, 1>>>(d_rand_state2);
-    // checkCudaErrors(cudaGetLastError());
-    // checkCudaErrors(cudaDeviceSynchronize());
+    checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * num_samples * sizeof(curandState)));
 
     // make our world of hittables & the camera
-#if 0
-    hitable **d_hitables;
-    int num_hitables = 22 * 22 + 1 + 3;
-    checkCudaErrors(
-        cudaMalloc((void **)&d_hitables, num_hitables * sizeof(hitable *)));
-    hitable **d_world;
-    checkCudaErrors(cudaMalloc((void **)&d_world, sizeof(hitable *)));
-    camera **d_camera;
-    checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
-    create_world<<<1, 1>>>(d_hitables, d_world, d_camera, image_width, image_height,
-                           d_rand_state2);
-    checkCudaErrors(cudaGetLastError());
-    checkCudaErrors(cudaDeviceSynchronize());
-#else
     // create & populate scene data that create_world with use to make the
     // scene.
     scene_camera *d_scene_camera;
@@ -472,19 +320,16 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
     material **d_materials;
     checkCudaErrors(cudaMalloc((void **)&d_materials, num_materials * sizeof(material *)));
-    // hittable **d_hittables;
     int num_hittables = num_instance_triangles + num_spheres;
     std::cerr << "num_hittables = " << num_hittables << "\n";
-    // checkCudaErrors(cudaMalloc((void **)&d_hittables, num_hittables * sizeof(hittable *)));
     hittable **d_world;
     checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hittable *)));
 
     create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,
-                           num_spheres, d_scene_spheres, num_instance_triangles, d_instance_triangles, // d_hittables,
-                           image_width, image_height); // FIXME use aspect_ratio
+                           num_spheres, d_scene_spheres, num_instance_triangles, d_instance_triangles, image_width,
+                           image_height); // FIXME use aspect_ratio
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
-#endif
 
 #if SUPPORTS_CUDA_MEM_PREFETCH_ASYNC == 1
     // Prefetch the FB to the GPU
@@ -500,36 +345,21 @@ int main(int argc, char *argv[])
     // Render our buffer
     dim3 blocks(num_blocks_x, num_blocks_y);
     dim3 threads(num_threads_x, num_threads_y);
-    if (!use_render2) {
-        render_init<<<blocks, threads>>>(image_width, image_height, d_rand_state);
-    }
-    else {
-        threads.x = num_samples;
-        render_init2<<<blocks, threads>>>(image_width, image_height, d_rand_state);
-    }
+    render_init<<<blocks, threads>>>(image_width, image_height, d_rand_state);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
-    if (!use_render2) {
-        // note that render has __launch_bounds__ of maxThreadsPerBlock=64, minBlocksPerMultiprocessor=12
-        render<<<blocks, threads>>>(fb, image_width, image_height, num_samples, d_camera, d_world, max_depth,
-                                    d_rand_state);
-    }
-    else {
-        // render one pixel = one block.  Thread.x is the sample count.
-        threads.x = num_samples;
-        render2<<<blocks, threads, num_samples * sizeof(vec3)>>>(fb, image_width, image_height, d_camera, d_world,
-                                                                 max_depth, d_rand_state);
-    }
+    render<<<blocks, threads>>>(fb, image_width, image_height, num_samples, d_camera, d_world, max_depth, d_rand_state);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
+
     stop = clock();
     double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
     std::cerr << "took " << timer_seconds << " seconds.\n";
 
-    std::cerr << "stats:" << (use_render2 ? "r2," : "r1,") << cuda_runtime_version << "," << image_width << ","
-              << image_height << "," << num_samples << "," << (num_blocks_x * num_blocks_y) << ","
-              << (use_render2 ? num_samples : num_threads_x) << "," << num_threads_y << "," << timer_seconds << "\n";
+    std::cerr << "stats:" << cuda_runtime_version << "," << image_width << "," << image_height << "," << num_samples
+              << "," << (num_blocks_x * num_blocks_y) << "," << num_threads_x << "," << num_threads_y << ","
+              << timer_seconds << "\n";
 
 #if SUPPORTS_CUDA_MEM_PREFETCH_ASYNC == 1
     // Prefetch the FB back to the CPU
@@ -569,19 +399,13 @@ int main(int argc, char *argv[])
 
     // clean up
     checkCudaErrors(cudaDeviceSynchronize());
-#if 0
-    free_world<<<1, 1>>>(d_hittables, d_world, d_camera);
-#else
-    free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, // d_hittables,
-                         d_world, d_camera);
-#endif
+    free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, d_world, d_camera);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaFree(d_scene_camera));
     checkCudaErrors(cudaFree(d_scene_materials));
     checkCudaErrors(cudaFree(d_scene_spheres));
     checkCudaErrors(cudaFree(d_world));
     checkCudaErrors(cudaFree(d_rand_state));
-    // checkCudaErrors(cudaFree(d_rand_state2));
     checkCudaErrors(cudaFree(fb));
 
     if (the_scene) {
