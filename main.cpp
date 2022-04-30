@@ -39,11 +39,12 @@ void usage(char *argv)
     std::cerr << "  -w <width>          : output image width. (default = 1200)\n";
     std::cerr << "  -h <height>         : output image height. (800)\n";
     std::cerr << "  -s <samples>        : number of samples per pixel. (10)\n";
+    std::cerr << "  -d <max_depth>      : may ray recursion depth. (50)\n";
 #ifdef USE_CUDA
     std::cerr << "  -tx <num_threads_x> : number of threads per block in x. (8)\n";
     std::cerr << "  -ty <num_threads_y> : number of threads per block in y. (8)\n";
     std::cerr << "  -q                  : query devices & cuda info\n";
-    std::cerr << "  -d <device number>  : use this cuda device (default = 0)\n";
+    std::cerr << "  -D <device number>  : use this cuda device (0)\n";
 #endif
     std::exit(1);
 }
@@ -60,7 +61,7 @@ int main(int argc, char *argv[])
 #endif
     scene *the_scene = nullptr;
     char *png_filename = nullptr;
-    int max_depth = 50; // FIXME add commandline
+    int max_depth = 50;
 
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
@@ -72,6 +73,9 @@ int main(int argc, char *argv[])
             }
             else if (argv[i][1] == 's') {
                 num_samples = atoi(argv[++i]);
+            }
+            else if (argv[i][1] == 'd') {
+                max_depth = atoi(argv[++i]);
             }
 #ifdef USE_CUDA
             else if (argv[i][1] == 't') {
@@ -96,7 +100,7 @@ int main(int argc, char *argv[])
             else if (argv[i][1] == 'q') {
                 query_cuda_info();
             }
-            else if (argv[i][1] == 'd') {
+            else if (argv[i][1] == 'D') {
                 int device = atoi(argv[++i]);
                 checkCudaErrors(cudaSetDevice(device));
             }
