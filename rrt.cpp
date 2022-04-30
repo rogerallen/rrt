@@ -97,3 +97,10 @@ vec3 *Rrt::render(scene *the_scene)
 
     return fb;
 }
+
+Rrt::~Rrt()
+{
+    if (fb != nullptr) {
+        delete[] fb;
+    }
+}

@@ -29,12 +29,7 @@ class Rrt {
         aspect_ratio = 1.0 * image_width / image_height;
         fb = nullptr;
     }
-    ~Rrt()
-    {
-        if (fb != nullptr) {
-            delete[] fb;
-        }
-    }
+    ~Rrt();
 
     vec3 *render(scene *the_scene);
 

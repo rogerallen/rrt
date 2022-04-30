@@ -262,12 +262,6 @@ vec3 *Rrt::render(scene *the_scene)
     checkCudaErrors(cudaGetLastError());
 #endif
 
-    return fb;
-
-#if 0
-
-FIXME
-
     // clean up
     checkCudaErrors(cudaDeviceSynchronize());
     free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, d_world, d_camera);
@@ -277,12 +271,18 @@ FIXME
     checkCudaErrors(cudaFree(d_scene_spheres));
     checkCudaErrors(cudaFree(d_world));
     checkCudaErrors(cudaFree(d_rand_state));
-    checkCudaErrors(cudaFree(fb));
 
     if (the_scene) {
         delete the_scene;
     }
 
+    return fb;
+}
+
+Rrt::~Rrt()
+{
+    if (fb != nullptr) {
+        checkCudaErrors(cudaFree(fb));
+    }
     cudaDeviceReset();
-#endif
 }
