@@ -13,10 +13,11 @@
 - [x] shared-memory sample reduction
 - [x] triangle-based objects
 - [x] modernize code from class
-- [ ] split main.cu into main.cpp & rrt.cu
-- [ ] add PNG to cpp path
-- [ ] cmake build
+- [x] split main.cu into main.cpp & rrt.cu
+- [x] add PNG to cpp path
+- [ ] add scene handling to rrtc
 - [ ] input list of scenes to render
+- [ ] cmake build?
 - [ ] add pybind11 to enable running from python
 
 ## Status
