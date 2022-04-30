@@ -52,4 +52,4 @@ profile_kernel: rrt
 	$(NCU) -f -k render -c 1 --set full --import-source on -o profile_kernel ./rrt $(RUNARGS) > profile_kernel.log
 
 clean:
-	rm -f rrt rrtc rttd *.ppm *.png *.nsys-rep *.ncu-rep *.log *.sqlite
+	rm -f rrt rrtc rrtd *.ppm *.png *.nsys-rep *.ncu-rep *.log *.sqlite
