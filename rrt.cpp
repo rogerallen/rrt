@@ -67,10 +67,8 @@ vec3 *Rrt::render(scene *the_scene)
     }
 
     // Camera
-    camera cam(the_scene->camera.lookfrom, the_scene->camera.lookat, the_scene->camera.vup,
-               (FP_T)the_scene->camera.vfov,
-               FP_T(image_width) / FP_T(image_height), // pass in aspect_ratio FIXME
-               (FP_T)the_scene->camera.aperture, (FP_T)the_scene->camera.focus);
+    camera cam(the_scene->camera.lookfrom, the_scene->camera.lookat, the_scene->camera.vup, the_scene->camera.vfov,
+               aspect_ratio, the_scene->camera.aperture, the_scene->camera.focus);
 
     fb = new vec3[image_width * image_height];
 

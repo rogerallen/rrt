@@ -113,16 +113,14 @@ cuda_render(vec3 *fb, int image_width, int image_height, int samples_per_pixel, 
 __global__ void create_world(hittable **d_world, scene_camera *d_scene_camera, camera **d_camera, int num_materials,
                              scene_material *d_scene_materials, material **d_materials, int num_spheres,
                              scene_sphere *d_scene_spheres, int num_triangles,
-                             scene_instance_triangle *d_scene_triangles, int image_width, int image_height)
+                             scene_instance_triangle *d_scene_triangles, FP_T aspect_ratio)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
 
         *d_world = new hittable_list();
 
-        *d_camera =
-            new camera(d_scene_camera->lookfrom, d_scene_camera->lookat, d_scene_camera->vup,
-                       (FP_T)d_scene_camera->vfov, FP_T(image_width) / FP_T(image_height), // pass in aspect_ratio FIXME
-                       (FP_T)d_scene_camera->aperture, (FP_T)d_scene_camera->focus);
+        *d_camera = new camera(d_scene_camera->lookfrom, d_scene_camera->lookat, d_scene_camera->vup,
+                               d_scene_camera->vfov, aspect_ratio, d_scene_camera->aperture, d_scene_camera->focus);
 
         for (int i = 0; i < num_materials; ++i) {
             scene_material *m = &(d_scene_materials[i]);
@@ -223,8 +221,7 @@ vec3 *Rrt::render(scene *the_scene)
     checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hittable *)));
 
     create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,
-                           num_spheres, d_scene_spheres, num_instance_triangles, d_instance_triangles, image_width,
-                           image_height); // FIXME use aspect_ratio
+                           num_spheres, d_scene_spheres, num_instance_triangles, d_instance_triangles, aspect_ratio);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
