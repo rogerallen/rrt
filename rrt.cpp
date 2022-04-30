@@ -7,15 +7,16 @@
 #include "triangle.h"
 
 #include <iostream>
+#include <vector>
 
-color ray_color(const ray &r, const hittable &world, int depth, bool debug)
+color ray_color(const ray &r, const hittable *world, int depth, bool debug)
 {
     hit_record rec;
 
     // If we've exceeded the ray bounce limit, no more light is gathered.
     if (depth <= 0) return color(0, 0, 0);
 
-    if (world.hit(r, 0.001, infinity, rec, false)) {
+    if (world->hit(r, 0.001, infinity, rec, debug)) {
         ray scattered;
         color attenuation;
         if (rec.mat_ptr->scatter(r, rec, attenuation, scattered, debug)) {
@@ -37,68 +38,39 @@ color ray_color(const ray &r, const hittable &world, int depth, bool debug)
     return c;
 }
 
-hittable_list random_scene()
-{
-    hittable_list world;
-
-    auto ground_material = make_shared<lambertian>(color(0.5, 0.5, 0.5));
-    world.add(make_shared<sphere>(point3(0, -1000, 0), 1000, ground_material));
-
-    for (int a = -11; a < 11; a++) {
-        for (int b = -11; b < 11; b++) {
-            auto choose_mat = random_uniform();
-            point3 center(a + 0.9 * random_uniform(), 0.2, b + 0.9 * random_uniform());
-
-            if ((center - point3(4, 0.2, 0)).length() > 0.9) {
-                shared_ptr<material> sphere_material;
-
-                if (choose_mat < 0.8) {
-                    // diffuse
-                    auto albedo = color::random() * color::random();
-                    sphere_material = make_shared<lambertian>(albedo);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                }
-                else if (choose_mat < 0.95) {
-                    // metal
-                    auto albedo = color::random(0.5, 1);
-                    auto fuzz = random_uniform(0, 0.5);
-                    sphere_material = make_shared<metal>(albedo, fuzz);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                }
-                else {
-                    // glass
-                    sphere_material = make_shared<dielectric>(1.5);
-                    world.add(make_shared<sphere>(center, 0.2, sphere_material));
-                }
-            }
-        }
-    }
-
-    auto material1 = make_shared<dielectric>(1.5);
-    world.add(make_shared<sphere>(point3(0, 1, 0), 1.0, material1));
-
-    auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
-    world.add(make_shared<sphere>(point3(-4, 1, 0), 1.0, material2));
-
-    auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
-    world.add(make_shared<sphere>(point3(4, 1, 0), 1.0, material3));
-
-    return world;
-}
-
 vec3 *Rrt::render(scene *the_scene)
 {
 
-    // World - FIXME use the_scene
-    auto world = random_scene();
+    auto world = new hittable_list();
+
+    std::vector<material_ptr_t> materials;
+    for (auto m : the_scene->materials) {
+        if (m->type == LAMBERTIAN) {
+            materials.push_back(make_shared<lambertian>(m->mat.lambertian.albedo));
+        }
+        else if (m->type == METAL) {
+            materials.push_back(make_shared<metal>(m->mat.metal.albedo, m->mat.metal.fuzz));
+        }
+        else if (m->type == DIELECTRIC) {
+            materials.push_back(make_shared<dielectric>(m->mat.dielectric.ref_idx));
+        }
+    }
+
+    for (auto s : the_scene->spheres) {
+        world->add(make_shared<sphere>(s->center, s->radius, materials[s->material_idx]));
+    }
+    scene_instance_triangle *instance_triangles = new scene_instance_triangle[the_scene->num_triangles()];
+    the_scene->fill_instance_triangles(instance_triangles);
+    for (int i = 0; i < the_scene->num_triangles(); ++i) {
+        scene_instance_triangle t = instance_triangles[i];
+        world->add(make_shared<triangle>(t.vertices[0], t.vertices[1], t.vertices[2], materials[t.material_idx]));
+    }
 
     // Camera
-    point3 lookfrom(13, 2, 3);
-    point3 lookat(0, 0, 0);
-    vec3 vup(0, 1, 0);
-    auto dist_to_focus = 10.0;
-    auto aperture = 0.1;
-    camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus);
+    camera cam(the_scene->camera.lookfrom, the_scene->camera.lookat, the_scene->camera.vup,
+               (FP_T)the_scene->camera.vfov,
+               FP_T(image_width) / FP_T(image_height), // pass in aspect_ratio FIXME
+               (FP_T)the_scene->camera.aperture, (FP_T)the_scene->camera.focus);
 
     fb = new vec3[image_width * image_height];
 

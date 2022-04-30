@@ -25,6 +25,7 @@ struct scene_triangle {
 struct scene_instance_triangle {
     vec3 vertices[3]; // 3 verts
     int material_idx;
+    scene_instance_triangle() {}
     scene_instance_triangle(vec3 v0, vec3 v1, vec3 v2, int mi)
     {
         vertices[0] = v0;

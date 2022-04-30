@@ -15,7 +15,7 @@
 - [x] modernize code from class
 - [x] split main.cu into main.cpp & rrt.cu
 - [x] add PNG to cpp path
-- [ ] add scene handling to rrtc
+- [x] add scene handling to rrtc
 - [ ] input list of scenes to render
 - [ ] cmake build?
 - [ ] add pybind11 to enable running from python
