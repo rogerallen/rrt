@@ -161,9 +161,6 @@ __global__ void free_world(int num_materials, material **d_materials, int num_sp
 
 vec3 *Rrt::render(scene *the_scene)
 {
-    int num_threads_x = 8;
-    int num_threads_y = 8;
-
     int num_blocks_x = image_width / num_threads_x + 1;
     int num_blocks_y = image_height / num_threads_y + 1;
 

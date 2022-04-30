@@ -39,11 +39,11 @@ void usage(char *argv)
     std::cerr << "  -w <width>          : output image width. (default = 1200)\n";
     std::cerr << "  -h <height>         : output image height. (800)\n";
     std::cerr << "  -s <samples>        : number of samples per pixel. (10)\n";
+#ifdef USE_CUDA
     std::cerr << "  -tx <num_threads_x> : number of threads per block in x. (8)\n";
     std::cerr << "  -ty <num_threads_y> : number of threads per block in y. (8)\n";
-#ifdef USE_CUDA
     std::cerr << "  -q                  : query devices & cuda info\n";
-    std::cerr << "  -d <device number>  : use this device (default = 0)\n";
+    std::cerr << "  -d <device number>  : use this cuda device (default = 0)\n";
 #endif
     std::exit(1);
 }
@@ -54,8 +54,10 @@ int main(int argc, char *argv[])
     int image_width = 1200;
     int image_height = 800;
     int num_samples = 10;
+#ifdef USE_CUDA
     int num_threads_x = 8;
     int num_threads_y = 8;
+#endif
     scene *the_scene = nullptr;
     char *png_filename = nullptr;
     int max_depth = 50; // FIXME add commandline
@@ -71,6 +73,7 @@ int main(int argc, char *argv[])
             else if (argv[i][1] == 's') {
                 num_samples = atoi(argv[++i]);
             }
+#ifdef USE_CUDA
             else if (argv[i][1] == 't') {
                 if (argv[i][2] == 'x') {
                     num_threads_x = atoi(argv[++i]);
@@ -82,6 +85,7 @@ int main(int argc, char *argv[])
                     usage(argv[i]);
                 }
             }
+#endif
             else if (argv[i][1] == 'i') {
                 the_scene = new scene(argv[++i]);
             }
@@ -111,7 +115,12 @@ int main(int argc, char *argv[])
         std::exit(1);
     }
 
-    Rrt rrt = Rrt(image_width, image_height, num_samples, max_depth);
+    Rrt rrt = Rrt(image_width, image_height, num_samples, max_depth
+#ifdef USE_CUDA
+                  ,
+                  num_threads_x, num_threads_y
+#endif
+    );
     vec3 *fb = rrt.render(the_scene);
 
     // Output FB as Image

@@ -35,7 +35,7 @@ Usage: rrt [options]
   -tx <num_threads_x> : number of threads per block in x. (8)
   -ty <num_threads_y> : number of threads per block in y. (8)
   -q                  : query devices & cuda info
-  -d <device number>  : use this device (default = 0)
+  -d <device number>  : use this cuda device (default = 0)
 ```
 
 ## Updates

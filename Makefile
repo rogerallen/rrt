@@ -15,7 +15,7 @@ NVCC_DBG       = -lineinfo -O3 --expt-relaxed-constexpr
 NVCC_FLAGS     = -ccbin $(HOST_COMPILER) -m64 $(NVCC_DBG) $(NVCC_GENCODE)
 
 SRCS = main.cpp rrt.cu
-INCS = vec3.h ray.h hittable.h hittable_list.h sphere.h triangle.h camera.h material.h scene.h stb_image_write.h
+INCS = rrt.h vec3.h ray.h hittable.h hittable_list.h sphere.h triangle.h camera.h material.h scene.h stb_image_write.h
 
 # default
 all: rrt rrtd rrtc
