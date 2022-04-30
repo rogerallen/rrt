@@ -12,17 +12,13 @@ NVCC_GENCODE ?= -arch sm_86
 #NVCC_DBG       = -g -G --expt-relaxed-constexpr
 NVCC_DBG       = -lineinfo -O3 --expt-relaxed-constexpr
 
-#FP_CONTROL = 
-#FP_CONTROL = -DUSE_FLOAT_NOT_DOUBLE
-
 NVCC_FLAGS     = -ccbin $(HOST_COMPILER) -m64 $(NVCC_DBG) $(NVCC_GENCODE)
 
 SRCS = main.cpp rrt.cu
 INCS = vec3.h ray.h hittable.h hittable_list.h sphere.h triangle.h camera.h material.h scene.h stb_image_write.h
 
 # default
-all: rrt rrtc
-#  scenes/test2.png scenes/checkerboard.png scenes/final.png scenes/test1_d.png scenes/test2_d.png scenes/checkerboard_d.png scenes/final_d.png
+all: rrt rrtd rrtc
 
 rrt: $(SRCS) $(INCS)
 	$(NVCC) $(NVCC_FLAGS) -DFP_T=float -DUSE_CUDA main.cpp rrt.cu -o $@ 
@@ -34,41 +30,14 @@ rrtc: main.cpp rrt.cpp $(INCS)
 	$(NVCC) $(NVCC_DBG) -DFP_T=float main.cpp rrt.cpp -o $@
 
 # ??? 
-#%.png: %.txt rtt
-#	rm -f $@
-#	./rrt -i %.txt -o $@
+%.png: %.txt
+	./rrt -i $< -o $@
 
-scenes/test1.png: scenes/test1.txt rrt
-	rm -f $@
-	./rrt -i scenes/test1.txt -o $@
+%d.png: %.txt
+	./rrtd -i $< -o $@
 
-scenes/test2.png: scenes/test2.txt rrt
-	rm -f $@
-	./rrt -i scenes/test2.txt -o $@
-
-scenes/checkerboard.png: scenes/checkerboard.txt rrt
-	rm -f $@
-	./rrt -i scenes/checkerboard.txt -o $@
-
-scenes/final.png: scenes/final.txt rrt
-	rm -f $@
-	./rrt -i scenes/final.txt -o $@
-
-scenes/test1_d.png: scenes/test1.txt rrtd
-	rm -f $@
-	./rrtd -i scenes/test1.txt -o $@
-
-scenes/test2_d.png: scenes/test2.txt rrtd
-	rm -f $@
-	./rrtd -i scenes/test2.txt -o $@
-
-scenes/checkerboard_d.png: scenes/checkerboard.txt rrtd
-	rm -f $@
-	./rrtd -i scenes/checkerboard.txt -o $@
-
-scenes/final_d.png: scenes/final.txt rrtd
-	rm -f $@
-	./rrtd -i scenes/final.txt -o $@
+%c.png: %.txt
+	./rrtc -i $< -o $@
 
 # default run args for profiling
 RUNARGS ?= -i scenes/test1.txt -w 640 -h 480 -o scenes/test1.png
@@ -83,4 +52,4 @@ profile_kernel: rrt
 	$(NCU) -f -k render -c 1 --set full --import-source on -o profile_kernel ./rrt $(RUNARGS) > profile_kernel.log
 
 clean:
-	rm -f rrt rttd *.ppm *.png *.nsys-rep *.ncu-rep *.log *.sqlite
+	rm -f rrt rrtc rttd *.ppm *.png *.nsys-rep *.ncu-rep *.log *.sqlite
