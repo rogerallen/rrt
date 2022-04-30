@@ -4,7 +4,7 @@ An updated version of an accelerated CUDA ray-tracer I started at https://github
 
 I started this in 2018 and set it aside until 2022 when I taught a class at work and modernized the code to match changes at https://raytracing.github.io/
 
-This is still just a toy renderer and just something I'm working on for personal enjoyment.
+This is still just a toy renderer and just something I'm working on for personal enjoyment.  Everyone should build their own ray tracer.
 
 ## Building
 
@@ -17,6 +17,11 @@ make scenes/test1.png scenes/test1d.png scenes/test1c.png
 ```
 
 ## Usage
+
+There are 3 executables:
+- `rrt` is the CUDA accelerated code using `float` floating point
+- `rrtd` is the CUDA accelerated code using `double` floating point
+- `rrtc` is the less accelerated C++ code
 
 ```
 Usage: rrt [options]
@@ -33,6 +38,8 @@ Usage: rrt [options]
 
 ## Updates
 
+I will be updating the code for my own personal use.
+
 - added commandline arguments
 - added PNG output
 - use float or double math in renderer
@@ -47,11 +54,6 @@ Usage: rrt [options]
 - [ ] cmake build?
 - [ ] add pybind11 to enable running from python
 
-## Status
+## License
 
-Computelab: everything works
-Rainbow:    sudo /opt/nvidia/nsight-systems/2022.1.1/bin/nsys    segfaults
-            sudo /opt/nvidia/nsight-systems/2022.1.1/bin/nsys-ui works(!)
-            /opt/nvidia/nsight-compute/2022.1.1/ncu              works
-            /opt/nvidia/nsight-compute/2022.1.1/ncu-ui           works
-Gyre (WSL): learned async memcopy doesn't work. nsys & ncu TBD
+To the extent possible under law, Roger Allen has waived all copyright and related or neighboring rights to Roger's Ray Tracer. 
