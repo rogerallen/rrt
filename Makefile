@@ -28,7 +28,7 @@ rrt: $(SRCS) $(INCS)
 	$(NVCC) $(NVCC_FLAGS) -DFP_T=float -DUSE_CUDA main.cpp rrt.cu -o $@ 
 
 rrtd: $(SRCS) $(INCS)
-	$(NVCC) $(NVCC_FLAGS) -DFP_T=double main.cu -o $@ 
+	$(NVCC) $(NVCC_FLAGS) -DFP_T=double -DUSE_CUDA main.cpp rrt.cu -o $@ 
 
 rrtc: main.cpp rrt.cpp $(INCS)
 	$(NVCC) $(NVCC_DBG) -DFP_T=float main.cpp rrt.cpp -o $@

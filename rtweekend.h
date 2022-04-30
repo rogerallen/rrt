@@ -61,8 +61,11 @@ inline FP_T random_uniform(FP_T min, FP_T max)
     return min + (max - min) * random_uniform();
 }
 #else
-DEV FP_T random_uniform(curandState *state) { return curand_uniform(state); }
-DEV FP_T random_uniform(curandState *state, FP_T min, FP_T max) { return min + (max - min) * curand_uniform(state); }
+DEV inline FP_T random_uniform(curandState *state) { return curand_uniform(state); }
+DEV inline FP_T random_uniform(curandState *state, FP_T min, FP_T max)
+{
+    return min + (max - min) * curand_uniform(state);
+}
 #endif
 
 inline double clamp(FP_T x, FP_T min, FP_T max)

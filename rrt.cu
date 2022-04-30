@@ -1,21 +1,12 @@
-// NOTE: define USE_FLOAT_NOT_DOUBLE on compiler commandline to
-// control use of 'float' rather than 'double' for floating-point
-// type 'FP_T'
-#define USE_CUDA
-
-#include "rtweekend.h"
+#include "rrt.h"
 
 #include "camera.h"
-#include "color.h"
 #include "hittable_list.h"
-#include "scene.h"
+#include "material.h"
 #include "sphere.h"
 #include "triangle.h"
-#include <iostream>
-#include <time.h>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include <iostream>
 
 #ifdef COMPILING_FOR_WSL
 #define SUPPORTS_CUDA_MEM_PREFETCH_ASYNC 0
@@ -24,7 +15,7 @@
 #endif
 
 // limited version of checkCudaErrors from helper_cuda.h in CUDA examples
-#define checkCudaErrors(val) check_cuda((val), #val, __FILE__, __LINE__)
+// #define checkCudaErrors(val) check_cuda((val), #val, __FILE__, __LINE__)
 
 void check_cuda(cudaError_t result, char const *const func, const char *const file, int const line)
 {
@@ -89,8 +80,8 @@ __global__ void render_init(int image_width, int image_height, curandState *rand
 __global__ void
 // may be useful
 //__launch_bounds__(64, 12) // maxThreadsPerBlock, minBlocksPerMultiprocessor
-render(vec3 *fb, int image_width, int image_height, int samples_per_pixel, camera **cam, hittable **world,
-       int max_depth, curandState *d_rand_state)
+cuda_render(vec3 *fb, int image_width, int image_height, int samples_per_pixel, camera **cam, hittable **world,
+            int max_depth, curandState *d_rand_state)
 {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
@@ -168,101 +159,10 @@ __global__ void free_world(int num_materials, material **d_materials, int num_sp
     delete *d_camera;
 }
 
-void query_cuda_info()
+vec3 *Rrt::render(scene *the_scene)
 {
-    int count;
-    checkCudaErrors(cudaGetDeviceCount(&count));
-    for (int i = 0; i < count; i++) {
-        cudaDeviceProp prop;
-        checkCudaErrors(cudaGetDeviceProperties(&prop, i));
-        std::cout << "cudaGetDeviceProperties #" << i << "\n";
-        std::cout << "  name                        " << prop.name << "\n";
-        std::cout << "  major.minor                 " << prop.major << "." << prop.minor << "\n";
-        std::cout << "  multiProcessorCount         " << prop.multiProcessorCount << "\n";
-        std::cout << "  sharedMemPerBlock           " << prop.sharedMemPerBlock << "\n";
-        std::cout << "  maxThreadsPerBlock          " << prop.maxThreadsPerBlock << "\n";
-        std::cout << "  maxThreadsPerMultiProcessor " << prop.maxThreadsPerMultiProcessor << "\n";
-        std::cout << "  unifiedAddressing           " << prop.unifiedAddressing << "\n";
-        std::cout << "  l2CacheSize                 " << prop.l2CacheSize << "\n";
-    }
-}
-
-void usage(char *argv)
-{
-    std::cerr << "Unexpected argument: " << argv << "\n\n";
-    std::cerr << "Usage: rrt [options]\n";
-    std::cerr << "  -i file.txt         : input scene file\n";
-    std::cerr << "  -o file.png         : output raytraced PNG image (default is PPM to stdout)\n";
-    std::cerr << "  -w <width>          : output image width. (default = 1200)\n";
-    std::cerr << "  -h <height>         : output image height. (800)\n";
-    std::cerr << "  -s <samples>        : number of samples per pixel. (10)\n";
-    std::cerr << "  -tx <num_threads_x> : number of threads per block in x. (8)\n";
-    std::cerr << "  -ty <num_threads_y> : number of threads per block in y. (8)\n";
-    std::cerr << "  -q                  : query devices & cuda info\n";
-    std::cerr << "  -d <device number>  : use this device (default = 0)\n";
-    std::exit(1);
-}
-
-int main(int argc, char *argv[])
-{
-
-    int image_width = 1200;
-    int image_height = 800;
-    int num_samples = 10;
     int num_threads_x = 8;
     int num_threads_y = 8;
-    scene *the_scene = nullptr;
-    char *png_filename = nullptr;
-    int max_depth = 50; // FIXME add commandline
-
-    for (int i = 1; i < argc; ++i) {
-        if (argv[i][0] == '-') {
-            if (argv[i][1] == 'w') {
-                image_width = atoi(argv[++i]);
-            }
-            else if (argv[i][1] == 'h') {
-                image_height = atoi(argv[++i]);
-            }
-            else if (argv[i][1] == 's') {
-                num_samples = atoi(argv[++i]);
-            }
-            else if (argv[i][1] == 't') {
-                if (argv[i][2] == 'x') {
-                    num_threads_x = atoi(argv[++i]);
-                }
-                else if (argv[i][2] == 'y') {
-                    num_threads_y = atoi(argv[++i]);
-                }
-                else {
-                    usage(argv[i]);
-                }
-            }
-            else if (argv[i][1] == 'i') {
-                the_scene = new scene(argv[++i]);
-            }
-            else if (argv[i][1] == 'o') {
-                png_filename = argv[++i];
-            }
-            else if (argv[i][1] == 'q') {
-                query_cuda_info();
-            }
-            else if (argv[i][1] == 'd') {
-                int device = atoi(argv[++i]);
-                checkCudaErrors(cudaSetDevice(device));
-            }
-            else {
-                usage(argv[i]);
-            }
-        }
-        else {
-            usage(argv[i]);
-        }
-    }
-
-    if (the_scene == nullptr) {
-        std::cerr << "ERROR: no scene loaded." << std::endl;
-        std::exit(1);
-    }
 
     int num_blocks_x = image_width / num_threads_x + 1;
     int num_blocks_y = image_height / num_threads_y + 1;
@@ -271,7 +171,7 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaRuntimeGetVersion(&cuda_runtime_version));
 
     std::cerr << "CUDA Runtime Version " << cuda_runtime_version << "\n";
-    std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << num_samples
+    std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << samples_per_pixel
               << " samples per pixel ";
     std::cerr << "in " << num_blocks_x << "x" << num_blocks_y << " = " << num_blocks_x * num_blocks_y << " blocks of "
               << num_threads_x << "x" << num_threads_y << " threads each.\n";
@@ -285,7 +185,7 @@ int main(int argc, char *argv[])
 
     // allocate random state
     curandState *d_rand_state;
-    checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * num_samples * sizeof(curandState)));
+    checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * samples_per_pixel * sizeof(curandState)));
 
     // make our world of hittables & the camera
     // create & populate scene data that create_world with use to make the
@@ -349,7 +249,8 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
-    render<<<blocks, threads>>>(fb, image_width, image_height, num_samples, d_camera, d_world, max_depth, d_rand_state);
+    cuda_render<<<blocks, threads>>>(fb, image_width, image_height, samples_per_pixel, d_camera, d_world, max_depth,
+                                     d_rand_state);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
@@ -357,9 +258,9 @@ int main(int argc, char *argv[])
     double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
     std::cerr << "took " << timer_seconds << " seconds.\n";
 
-    std::cerr << "stats:" << cuda_runtime_version << "," << image_width << "," << image_height << "," << num_samples
-              << "," << (num_blocks_x * num_blocks_y) << "," << num_threads_x << "," << num_threads_y << ","
-              << timer_seconds << "\n";
+    std::cerr << "stats:" << cuda_runtime_version << "," << image_width << "," << image_height << ","
+              << samples_per_pixel << "," << (num_blocks_x * num_blocks_y) << "," << num_threads_x << ","
+              << num_threads_y << "," << timer_seconds << "\n";
 
 #if SUPPORTS_CUDA_MEM_PREFETCH_ASYNC == 1
     // Prefetch the FB back to the CPU
@@ -367,35 +268,11 @@ int main(int argc, char *argv[])
     checkCudaErrors(cudaGetLastError());
 #endif
 
-    // Output FB as Image
-    if (png_filename == nullptr) {
-        // default to PPM to stdout
-        std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
-        for (int j = image_height - 1; j >= 0; --j) {
-            for (int i = 0; i < image_width; ++i) {
-                size_t pixel_index = j * image_width + i;
-                write_color(std::cout, fb[pixel_index], num_samples);
-            }
-        }
-    }
-    else {
-        // write fb to png_filename
-        uint8_t *cpu_fb = new uint8_t[image_width * image_height * 3];
-        for (int j = image_height - 1, k = 0; j >= 0; j--, k++) {
-            for (int i = 0; i < image_width; i++) {
-                size_t fb_idx = j * image_width + i;
-                size_t cpu_fb_idx = k * image_width * 3 + i * 3;
-                int red, grn, blu;
-                convert_color(fb[fb_idx], num_samples, &red, &grn, &blu);
-                cpu_fb[cpu_fb_idx + 0] = uint8_t(red);
-                cpu_fb[cpu_fb_idx + 1] = uint8_t(grn);
-                cpu_fb[cpu_fb_idx + 2] = uint8_t(blu);
-            }
-        }
-        stbi_write_png(png_filename, image_width, image_height, 3, (const void *)cpu_fb,
-                       image_width * 3 * sizeof(uint8_t));
-        delete[] cpu_fb;
-    }
+    return fb;
+
+#if 0
+
+FIXME
 
     // clean up
     checkCudaErrors(cudaDeviceSynchronize());
@@ -413,4 +290,5 @@ int main(int argc, char *argv[])
     }
 
     cudaDeviceReset();
+#endif
 }

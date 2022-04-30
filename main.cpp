@@ -9,6 +9,27 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#ifdef USE_CUDA
+void query_cuda_info()
+{
+    int count;
+    checkCudaErrors(cudaGetDeviceCount(&count));
+    for (int i = 0; i < count; i++) {
+        cudaDeviceProp prop;
+        checkCudaErrors(cudaGetDeviceProperties(&prop, i));
+        std::cout << "cudaGetDeviceProperties #" << i << "\n";
+        std::cout << "  name                        " << prop.name << "\n";
+        std::cout << "  major.minor                 " << prop.major << "." << prop.minor << "\n";
+        std::cout << "  multiProcessorCount         " << prop.multiProcessorCount << "\n";
+        std::cout << "  sharedMemPerBlock           " << prop.sharedMemPerBlock << "\n";
+        std::cout << "  maxThreadsPerBlock          " << prop.maxThreadsPerBlock << "\n";
+        std::cout << "  maxThreadsPerMultiProcessor " << prop.maxThreadsPerMultiProcessor << "\n";
+        std::cout << "  unifiedAddressing           " << prop.unifiedAddressing << "\n";
+        std::cout << "  l2CacheSize                 " << prop.l2CacheSize << "\n";
+    }
+}
+#endif
+
 void usage(char *argv)
 {
     std::cerr << "Unexpected argument: " << argv << "\n\n";
