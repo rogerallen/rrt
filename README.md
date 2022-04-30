@@ -38,10 +38,10 @@ Usage: rrt [options]
 
 ## Updates
 
-I will be updating the code for my own personal use.
+Some updates I made that are my own improvements from the original book.
 
 - added commandline arguments
-- added PNG output
+- added PNG output (via stb_image_write.h)
 - use float or double math in renderer
 - add a scene description file
 - added objects based on triangles
