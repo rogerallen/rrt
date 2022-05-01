@@ -51,9 +51,14 @@ Some updates I made that are my own improvements from the original book.
 - add a scene description file
 - added objects based on triangles
 
+Updates from "The Next Week"
+
+- added motion blur & moving spheres
+
 ## To Do
 
-- [ ] add motion blur
+- [x] add motion blur
+- [ ] add motion blur to object instances
 - [ ] add BVH
 - [ ] input list of scenes to render
 - [ ] cmake build?
