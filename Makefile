@@ -27,6 +27,7 @@ rrt: $(SRCS) $(INCS)
 rrtd: $(SRCS) $(INCS)
 	$(NVCC) $(NVCC_FLAGS) -DFP_T=double -DUSE_CUDA $(SRCS) -o $@ 
 
+# to be fair to CPU, adjust this to use double, but using float catches bugs during development, so...
 rrtc: $(SRCSC) $(INCS)
 	$(NVCC) $(NVCC_DBG) -DFP_T=float $(SRCSC) -o $@
 
