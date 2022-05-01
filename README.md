@@ -18,6 +18,8 @@ make scenes/test1.png scenes/test1d.png scenes/test1c.png
 
 If you get `CUDA error = 209` then you have a mismatch between the compiled kernel architecture & your actual GPU architecture.
 
+Additionally, you'll want to set the compiler option `-DCOMPILING_FOR_WSL` if you are compiling on Windows Subsystem for Linux.  I just add that to the `NVCC_GENCODE` variable.
+
 ## Usage
 
 There are 3 executables:
