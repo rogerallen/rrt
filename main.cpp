@@ -156,4 +156,9 @@ int main(int argc, char *argv[])
                        image_width * 3 * sizeof(uint8_t));
         delete[] cpu_fb;
     }
+
+    // Cleanup
+    if (the_scene) {
+        delete the_scene;
+    }
 }
