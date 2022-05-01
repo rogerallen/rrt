@@ -263,18 +263,14 @@ vec3 *Rrt::render(scene *the_scene)
 #endif
 
     // clean up
-    checkCudaErrors(cudaDeviceSynchronize());
     free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, d_world, d_camera);
+    checkCudaErrors(cudaDeviceSynchronize());
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaFree(d_scene_camera));
     checkCudaErrors(cudaFree(d_scene_materials));
     checkCudaErrors(cudaFree(d_scene_spheres));
     checkCudaErrors(cudaFree(d_world));
     checkCudaErrors(cudaFree(d_rand_state));
-
-    if (the_scene) {
-        delete the_scene;
-    }
 
     return fb;
 }
