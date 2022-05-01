@@ -94,6 +94,7 @@ vec3 *Rrt::render(scene *the_scene)
             fb[j * image_width + i] = pixel_color;
         }
     }
+    std::cerr << "\n";
 
     return fb;
 }
