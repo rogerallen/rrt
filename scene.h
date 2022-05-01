@@ -45,10 +45,19 @@ struct scene_camera {
     double vfov;
     double aperture;
     double focus;
+    double time0;
+    double time1;
 };
 
 struct scene_sphere {
     vec3 center;
+    double radius;
+    int material_idx;
+};
+
+struct scene_moving_sphere {
+    vec3 center0, center1;
+    double time0, time1;
     double radius;
     int material_idx;
 };
@@ -225,24 +234,39 @@ class scene {
             if (line.find("camera") == 0) {
                 got_camera = true;
                 std::istringstream iss(line);
-                std::string camera_str;
-                std::string lfx_str, lfy_str, lfz_str;
-                std::string lax_str, lay_str, laz_str;
-                std::string vux_str, vuy_str, vuz_str;
-                std::string vfo_str, ap_str, foc_str;
-                iss >> camera_str;
-                iss >> lfx_str >> lfy_str >> lfz_str;
-                iss >> lax_str >> lay_str >> laz_str;
-                iss >> vux_str >> vuy_str >> vuz_str;
-                iss >> vfo_str;
-                iss >> ap_str;
-                iss >> foc_str;
-                camera.lookfrom = vec3(std::stod(lfx_str), std::stod(lfy_str), std::stod(lfz_str));
-                camera.lookat = vec3(std::stod(lax_str), std::stod(lay_str), std::stod(laz_str));
-                camera.vup = vec3(std::stod(vux_str), std::stod(vuy_str), std::stod(vuz_str));
-                camera.vfov = std::stod(vfo_str);
-                camera.aperture = std::stod(ap_str);
-                camera.focus = std::stod(foc_str);
+                std::vector<std::string> words;
+                while (iss) {
+                    std::string s;
+                    iss >> s;
+                    words.push_back(s);
+                }
+                double time0 = 0.0, time1 = 0.0;
+                int cur_idx = 1; // skip camera
+                vec3 lookfrom =
+                    vec3(std::stod(words[cur_idx]), std::stod(words[cur_idx + 1]), std::stod(words[cur_idx + 2]));
+                cur_idx += 3;
+                vec3 lookat =
+                    vec3(std::stod(words[cur_idx]), std::stod(words[cur_idx + 1]), std::stod(words[cur_idx + 2]));
+                cur_idx += 3;
+                vec3 vup =
+                    vec3(std::stod(words[cur_idx]), std::stod(words[cur_idx + 1]), std::stod(words[cur_idx + 2]));
+                cur_idx += 3;
+                double vfov = std::stod(words[cur_idx++]);
+                double aperture = std::stod(words[cur_idx++]);
+                double focus = std::stod(words[cur_idx++]);
+                if (cur_idx < words.size() - 1) {
+                    // we have time0, time1
+                    time0 = std::stod(words[cur_idx++]);
+                    time1 = std::stod(words[cur_idx++]);
+                }
+                camera.lookfrom = lookfrom;
+                camera.lookat = lookat;
+                camera.vup = vup;
+                camera.vfov = vfov;
+                camera.aperture = aperture;
+                camera.focus = focus;
+                camera.time0 = time0;
+                camera.time1 = time1;
             }
             else if (line.find("material") == 0) {
                 scene_material *new_material = new scene_material;
@@ -296,6 +320,31 @@ class scene {
                 new_sphere->radius = std::stod(r_str);
                 new_sphere->material_idx = material_names_to_idx[mat_str];
                 spheres.push_back(new_sphere);
+            }
+            else if (line.find("msphere") == 0) {
+                std::istringstream iss(line);
+                std::string sphere_str;
+                std::string c0x_str, c0y_str, c0z_str;
+                std::string c1x_str, c1y_str, c1z_str;
+                std::string t0_str, t1_str;
+                std::string r_str;
+                std::string mat_str;
+                iss >> sphere_str;
+                iss >> c0x_str >> c0y_str >> c0z_str;
+                iss >> c1x_str >> c1y_str >> c1z_str;
+                iss >> t0_str >> t1_str;
+                iss >> r_str;
+                iss >> mat_str;
+
+                scene_moving_sphere *new_moving_sphere = new scene_moving_sphere;
+
+                new_moving_sphere->center0 = vec3(std::stod(c0x_str), std::stod(c0y_str), std::stod(c0z_str));
+                new_moving_sphere->center1 = vec3(std::stod(c1x_str), std::stod(c1y_str), std::stod(c1z_str));
+                new_moving_sphere->time0 = std::stod(t0_str);
+                new_moving_sphere->time1 = std::stod(t1_str);
+                new_moving_sphere->radius = std::stod(r_str);
+                new_moving_sphere->material_idx = material_names_to_idx[mat_str];
+                moving_spheres.push_back(new_moving_sphere);
             }
             else if (line.find("obj_beg") == 0) {
                 std::istringstream iss(line);
@@ -394,15 +443,19 @@ class scene {
             std::cerr << "ERROR: Scene did not have any materials." << std::endl;
             std::exit(4);
         }
-        if (spheres.size() == 0) {
-            std::cerr << "ERROR: Scene did not have any spheres." << std::endl;
+        if (spheres.size() + moving_spheres.size() + obj_insts.size() == 0) {
+            std::cerr << "ERROR: Scene did not have any objects." << std::endl;
             std::exit(4);
         }
         std::cerr << "read scene file: " << filename << "\n";
         std::cerr << "material count:  " << materials.size() << "\n";
         std::cerr << "sphere count:    " << spheres.size() << std::endl;
+        std::cerr << "msphere count:   " << moving_spheres.size() << std::endl;
         std::cerr << "obj count:       " << objs.size() << std::endl;
         std::cerr << "obj_inst count:  " << obj_insts.size() << std::endl;
+        if (camera.time0 != camera.time1) {
+            std::cerr << "camera time:     " << camera.time0 << " - " << camera.time1 << std::endl;
+        }
     }
     // I don't think we need a destructor.
     int num_triangles()
@@ -424,6 +477,7 @@ class scene {
     std::map<std::string, int> material_names_to_idx;
     std::vector<scene_material *> materials;
     std::vector<scene_sphere *> spheres;
+    std::vector<scene_moving_sphere *> moving_spheres;
     std::vector<scene_obj *> objs;
     std::vector<scene_obj_inst *> obj_insts;
 };

@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "hittable_list.h"
 #include "material.h"
+#include "moving_sphere.h"
 #include "sphere.h"
 #include "triangle.h"
 
@@ -59,6 +60,10 @@ vec3 *Rrt::render(scene *the_scene)
     for (auto s : the_scene->spheres) {
         world->add(make_shared<sphere>(s->center, s->radius, materials[s->material_idx]));
     }
+    for (auto s : the_scene->moving_spheres) {
+        world->add(make_shared<moving_sphere>(s->center0, s->center1, s->time0, s->time1, s->radius,
+                                              materials[s->material_idx]));
+    }
     scene_instance_triangle *instance_triangles = new scene_instance_triangle[the_scene->num_triangles()];
     the_scene->fill_instance_triangles(instance_triangles);
     for (int i = 0; i < the_scene->num_triangles(); ++i) {
@@ -68,7 +73,8 @@ vec3 *Rrt::render(scene *the_scene)
 
     // Camera
     camera cam(the_scene->camera.lookfrom, the_scene->camera.lookat, the_scene->camera.vup, the_scene->camera.vfov,
-               aspect_ratio, the_scene->camera.aperture, the_scene->camera.focus);
+               aspect_ratio, the_scene->camera.aperture, the_scene->camera.focus, the_scene->camera.time0,
+               the_scene->camera.time1);
 
     fb = new vec3[image_width * image_height];
 
@@ -78,10 +84,12 @@ vec3 *Rrt::render(scene *the_scene)
         for (int i = 0; i < image_width; ++i) {
             bool debug = false;
             color pixel_color(0, 0, 0);
-            // if((i == 100) && (j == 75)) {
-            //     printf("DEBUG ij %d %d\n",i,j);
-            //     debug = true;
-            // }
+#if 0
+            if ((i == 100) && (j == 75)) {
+                printf("DEBUG ij %d %d\n", i, j);
+                debug = true;
+            }
+#endif
             for (int s = 0; s < samples_per_pixel; ++s) {
                 auto u = (i + random_uniform()) / (image_width - 1);
                 auto v = (j + random_uniform()) / (image_height - 1);

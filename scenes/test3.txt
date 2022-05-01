@@ -1,0 +1,19 @@
+# motion blur variant of test1.txt
+
+# camera lookfrom lookat  vup    vfov  aperture focus open/close shutter
+camera   0 2 5    0 0 -1  0 1 0  30.0  0.1      6.0   0.0 0.5
+
+# material name type options
+material ground lambertian 0.8 0.8 0.0
+material center lambertian 0.7 0.3 0.3
+material left   metal      0.8 0.8 0.8   0.3
+material right  metal      0.8 0.6 0.2   1.0
+
+# sphere x y z radius material
+sphere  0.0 -100.5 -1.0   100.0  ground
+
+# moving sphere 
+#        x0  y0  z0     x1  y1  z1     t0  t1   radius material
+msphere -1.0 0.0 -1.0  -1.5 0.5 -1.0   0.0 2.0   0.5  left
+msphere  0.0 0.0 -1.0   0.0 0.5 -1.0   0.0 1.0   0.5  center
+msphere  1.0 0.0 -1.0   1.5 0.5 -1.0   0.0 0.5   0.5  right

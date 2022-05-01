@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "hittable_list.h"
 #include "material.h"
+#include "moving_sphere.h"
 #include "sphere.h"
 #include "triangle.h"
 
@@ -112,7 +113,8 @@ cuda_render(vec3 *fb, int image_width, int image_height, int samples_per_pixel, 
 
 __global__ void create_world(hittable **d_world, scene_camera *d_scene_camera, camera **d_camera, int num_materials,
                              scene_material *d_scene_materials, material **d_materials, int num_spheres,
-                             scene_sphere *d_scene_spheres, int num_triangles,
+                             scene_sphere *d_scene_spheres, int num_moving_spheres,
+                             scene_moving_sphere *d_scene_moving_spheres, int num_triangles,
                              scene_instance_triangle *d_scene_triangles, FP_T aspect_ratio)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
@@ -120,7 +122,8 @@ __global__ void create_world(hittable **d_world, scene_camera *d_scene_camera, c
         *d_world = new hittable_list();
 
         *d_camera = new camera(d_scene_camera->lookfrom, d_scene_camera->lookat, d_scene_camera->vup,
-                               d_scene_camera->vfov, aspect_ratio, d_scene_camera->aperture, d_scene_camera->focus);
+                               d_scene_camera->vfov, aspect_ratio, d_scene_camera->aperture, d_scene_camera->focus,
+                               d_scene_camera->time0, d_scene_camera->time1);
 
         for (int i = 0; i < num_materials; ++i) {
             scene_material *m = &(d_scene_materials[i]);
@@ -138,6 +141,12 @@ __global__ void create_world(hittable **d_world, scene_camera *d_scene_camera, c
         for (int i = 0; i < num_spheres; ++i) {
             scene_sphere *s = &(d_scene_spheres[i]);
             ((hittable_list *)*d_world)->add(new sphere(s->center, s->radius, d_materials[s->material_idx]));
+        }
+        for (int i = 0; i < num_moving_spheres; ++i) {
+            scene_moving_sphere *s = &(d_scene_moving_spheres[i]);
+            ((hittable_list *)*d_world)
+                ->add(new moving_sphere(s->center0, s->center1, s->time0, s->time1, s->radius,
+                                        d_materials[s->material_idx]));
         }
         for (int i = 0; i < num_triangles; ++i) {
             scene_instance_triangle *t = &(d_scene_triangles[i]);
@@ -203,6 +212,14 @@ vec3 *Rrt::render(scene *the_scene)
         d_scene_spheres[i] = *(the_scene->spheres[i]);
     }
 
+    scene_moving_sphere *d_scene_moving_spheres;
+    int num_moving_spheres = the_scene->moving_spheres.size();
+    checkCudaErrors(
+        cudaMallocManaged((void **)&d_scene_moving_spheres, num_moving_spheres * sizeof(scene_moving_sphere)));
+    for (int i = 0; i < num_moving_spheres; ++i) {
+        d_scene_moving_spheres[i] = *(the_scene->moving_spheres[i]);
+    }
+
     scene_instance_triangle *d_instance_triangles;
     int num_instance_triangles = the_scene->num_triangles();
     checkCudaErrors(
@@ -221,7 +238,8 @@ vec3 *Rrt::render(scene *the_scene)
     checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hittable *)));
 
     create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,
-                           num_spheres, d_scene_spheres, num_instance_triangles, d_instance_triangles, aspect_ratio);
+                           num_spheres, d_scene_spheres, num_moving_spheres, d_scene_moving_spheres,
+                           num_instance_triangles, d_instance_triangles, aspect_ratio);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
