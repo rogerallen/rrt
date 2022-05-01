@@ -1,0 +1,17 @@
+Let's keep track of perf over time...
+
+5/1/2022 - on RTX 3080, WSL2 system
+Found double-precision faster than single, but 1024x1 single-precision wins, finally.
+-----------------------------------------------------------------------------------------
+$ ./rrtd -s 50 -tx 8 -ty 8 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50d.png
+stats:11050,1280,720,50,14651,8,8,9.00304
+$ ./rrt -s 50 -tx 8 -ty 8 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
+stats:11050,1280,720,50,14651,8,8,12.4506
+$ ./rrt -s 50 -tx 16 -ty 16 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
+stats:11050,1280,720,50,3726,16,16,11.1679
+$ ./rrt -s 50 -tx 128 -ty 2 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
+stats:11050,1280,720,50,3971,128,2,10.6953
+$ ./rrt -s 50 -tx 256 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
+stats:11050,1280,720,50,4326,256,1,9.69622
+$ ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png 
+stats:11050,1280,720,50,1442,1024,1,7.86074
