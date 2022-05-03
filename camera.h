@@ -27,11 +27,6 @@ class camera {
         time0 = _time0;
         time1 = _time1;
     }
-    HOSTDEV camera(camera *c)
-        : origin(c->origin), lower_left_corner(c->lower_left_corner), horizontal(c->horizontal), vertical(c->vertical),
-          u(c->u), v(c->v), w(c->w), lens_radius(c->lens_radius), time0(c->time0), time1(c->time1)
-    {
-    }
 
     DEV ray get_ray(CURAND_STATE_DEF_COMMA FP_T s, FP_T t) const
     {
