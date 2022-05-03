@@ -115,6 +115,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    // Create Scene
     if (the_scene_filename != "") {
         the_scene = new scene(the_scene_filename.c_str(), image_width, image_height);
     }
@@ -123,6 +124,7 @@ int main(int argc, char *argv[])
         std::exit(1);
     }
 
+    // Render Scene to Framebuffer
     Rrt rrt = Rrt(image_width, image_height, num_samples, max_depth
 #ifdef USE_CUDA
                   ,
@@ -131,9 +133,9 @@ int main(int argc, char *argv[])
     );
     vec3 *fb = rrt.render(the_scene);
 
-    // Output FB as Image
+    // Output Framebuffer as Image
     if (png_filename == nullptr) {
-        // default to PPM to stdout
+        // PPM to stdout
         std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
         for (int j = image_height - 1; j >= 0; --j) {
             for (int i = 0; i < image_width; ++i) {
@@ -143,7 +145,7 @@ int main(int argc, char *argv[])
         }
     }
     else {
-        // write fb to png_filename
+        // PNG to png_filename
         uint8_t *cpu_fb = new uint8_t[image_width * image_height * 3];
         for (int j = image_height - 1, k = 0; j >= 0; j--, k++) {
             for (int i = 0; i < image_width; i++) {
