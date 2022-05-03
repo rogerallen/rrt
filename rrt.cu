@@ -111,7 +111,7 @@ cuda_render(vec3 *fb, int image_width, int image_height, int samples_per_pixel, 
     fb[pixel_index] = pixel_color;
 }
 
-__global__ void create_world(hittable **d_world, scene_camera *d_scene_camera, camera **d_camera, int num_materials,
+__global__ void create_world(hittable **d_world, camera *d_scene_camera, camera **d_camera, int num_materials,
                              scene_material *d_scene_materials, material **d_materials, int num_spheres,
                              scene_sphere *d_scene_spheres, int num_moving_spheres,
                              scene_moving_sphere *d_scene_moving_spheres, int num_triangles,
@@ -121,9 +121,9 @@ __global__ void create_world(hittable **d_world, scene_camera *d_scene_camera, c
 
         *d_world = new hittable_list();
 
-        *d_camera = new camera(d_scene_camera->lookfrom, d_scene_camera->lookat, d_scene_camera->vup,
-                               d_scene_camera->vfov, aspect_ratio, d_scene_camera->aperture, d_scene_camera->focus,
-                               d_scene_camera->time0, d_scene_camera->time1);
+        // we have to copy-construct since the camera has a DEV-only get_ray function that depends
+        // on curand state.
+        *d_camera = new camera(d_scene_camera);
 
         for (int i = 0; i < num_materials; ++i) {
             scene_material *m = &(d_scene_materials[i]);
@@ -192,11 +192,10 @@ vec3 *Rrt::render(scene *the_scene)
     checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * samples_per_pixel * sizeof(curandState)));
 
     // make our world of hittables & the camera
-    // create & populate scene data that create_world with use to make the
-    // scene.
-    scene_camera *d_scene_camera;
-    checkCudaErrors(cudaMallocManaged((void **)&d_scene_camera, sizeof(scene_camera)));
-    *d_scene_camera = the_scene->camera;
+    // create & populate scene data that create_world with use to make the scene.
+    camera *d_scene_camera;
+    checkCudaErrors(cudaMallocManaged((void **)&d_scene_camera, sizeof(camera)));
+    *d_scene_camera = *(the_scene->cam);
 
     scene_material *d_scene_materials;
     int num_materials = the_scene->materials.size();
@@ -226,16 +225,19 @@ vec3 *Rrt::render(scene *the_scene)
         cudaMallocManaged((void **)&d_instance_triangles, num_instance_triangles * sizeof(scene_instance_triangle)));
     the_scene->fill_instance_triangles(d_instance_triangles);
 
-    // now create the data that will contain the world.  create_world populates
-    // these
+    // now create the data that will contain the world.
+    // create_world populates these vars
     camera **d_camera;
     checkCudaErrors(cudaMalloc((void **)&d_camera, sizeof(camera *)));
+
     material **d_materials;
     checkCudaErrors(cudaMalloc((void **)&d_materials, num_materials * sizeof(material *)));
-    int num_hittables = num_instance_triangles + num_spheres;
-    std::cerr << "num_hittables = " << num_hittables << "\n";
+
     hittable **d_world;
     checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hittable *)));
+
+    int num_hittables = num_instance_triangles + num_spheres;
+    std::cerr << "num_hittables = " << num_hittables << "\n";
 
     create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,
                            num_spheres, d_scene_spheres, num_moving_spheres, d_scene_moving_spheres,
@@ -284,7 +286,7 @@ vec3 *Rrt::render(scene *the_scene)
     free_world<<<1, 1>>>(num_materials, d_materials, num_spheres, d_world, d_camera);
     checkCudaErrors(cudaDeviceSynchronize());
     checkCudaErrors(cudaGetLastError());
-    checkCudaErrors(cudaFree(d_scene_camera));
+    // checkCudaErrors(cudaFree(d_scene_camera));
     checkCudaErrors(cudaFree(d_scene_materials));
     checkCudaErrors(cudaFree(d_scene_spheres));
     checkCudaErrors(cudaFree(d_world));

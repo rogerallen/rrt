@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
     int num_threads_x = 8;
     int num_threads_y = 8;
 #endif
+    std::string the_scene_filename;
     scene *the_scene = nullptr;
     char *png_filename = nullptr;
     int max_depth = 50;
@@ -91,7 +92,7 @@ int main(int argc, char *argv[])
             }
 #endif
             else if (argv[i][1] == 'i') {
-                the_scene = new scene(argv[++i]);
+                the_scene_filename = argv[++i];
             }
             else if (argv[i][1] == 'o') {
                 png_filename = argv[++i];
@@ -114,7 +115,10 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (the_scene == nullptr) {
+    if (the_scene_filename != "") {
+        the_scene = new scene(the_scene_filename.c_str(), image_width, image_height);
+    }
+    else {
         std::cerr << "ERROR: no scene loaded." << std::endl;
         std::exit(1);
     }

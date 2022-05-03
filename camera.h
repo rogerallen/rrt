@@ -5,9 +5,9 @@
 
 class camera {
   public:
-    DEV camera(point3 lookfrom, point3 lookat, vec3 vup,
-               FP_T vfov, // vertical field-of-view in degrees
-               FP_T aspect_ratio, FP_T aperture, FP_T focus_dist, FP_T _time0 = 0, FP_T _time1 = 0)
+    HOSTDEV camera(point3 lookfrom, point3 lookat, vec3 vup,
+                   FP_T vfov, // vertical field-of-view in degrees
+                   FP_T aspect_ratio, FP_T aperture, FP_T focus_dist, FP_T _time0 = 0, FP_T _time1 = 0)
     {
         auto theta = degrees_to_radians(vfov);
         auto h = tan(theta / 2);
@@ -27,6 +27,11 @@ class camera {
         time0 = _time0;
         time1 = _time1;
     }
+    HOSTDEV camera(camera *c)
+        : origin(c->origin), lower_left_corner(c->lower_left_corner), horizontal(c->horizontal), vertical(c->vertical),
+          u(c->u), v(c->v), w(c->w), lens_radius(c->lens_radius), time0(c->time0), time1(c->time1)
+    {
+    }
 
     DEV ray get_ray(CURAND_STATE_DEF_COMMA FP_T s, FP_T t) const
     {
@@ -36,6 +41,8 @@ class camera {
         return ray(origin + offset, lower_left_corner + s * horizontal + t * vertical - origin - offset,
                    random_uniform(CURAND_STATE_COMMA time0, time1));
     }
+    HOSTDEV FP_T t0() { return time0; }
+    HOSTDEV FP_T t1() { return time1; }
 
   private:
     point3 origin;

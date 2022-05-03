@@ -45,7 +45,7 @@ const FP_T pi = 3.1415926535897932385;
 
 // Utility Functions
 
-DEV inline FP_T degrees_to_radians(FP_T degrees) { return degrees * pi / 180.0; }
+HOSTDEV inline FP_T degrees_to_radians(FP_T degrees) { return degrees * pi / 180.0; }
 
 // we handle this via other means when using CUDA
 #ifndef USE_CUDA

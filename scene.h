@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "camera.h"
+
 //   2 - 1    indices should go around in CCW direction
 //   |  /     so that the normal is cross(0->1,0->2)
 //   0
@@ -36,17 +38,6 @@ struct scene_instance_triangle {
         //        vertices[1].e[0], vertices[1].e[1], vertices[1].e[2], vertices[2].e[0], vertices[2].e[1],
         //        vertices[2].e[2]);
     }
-};
-
-struct scene_camera {
-    vec3 lookfrom;
-    vec3 lookat;
-    vec3 vup;
-    double vfov;
-    double aperture;
-    double focus;
-    double time0;
-    double time1;
 };
 
 struct scene_sphere {
@@ -218,8 +209,9 @@ struct scene_material {
 
 class scene {
   public:
-    scene(char *filename)
+    scene(const char *filename, const int image_width, const int image_height)
     {
+        cam = nullptr;
         bool got_camera = false;
         std::string line;
         std::ifstream fl(filename);
@@ -259,14 +251,8 @@ class scene {
                     time0 = std::stod(words[cur_idx++]);
                     time1 = std::stod(words[cur_idx++]);
                 }
-                camera.lookfrom = lookfrom;
-                camera.lookat = lookat;
-                camera.vup = vup;
-                camera.vfov = vfov;
-                camera.aperture = aperture;
-                camera.focus = focus;
-                camera.time0 = time0;
-                camera.time1 = time1;
+                FP_T aspect_ratio = FP_T(image_width) / image_height;
+                cam = new camera(lookfrom, lookat, vup, vfov, aspect_ratio, aperture, focus, time0, time1);
             }
             else if (line.find("material") == 0) {
                 scene_material *new_material = new scene_material;
@@ -453,11 +439,16 @@ class scene {
         std::cerr << "msphere count:   " << moving_spheres.size() << std::endl;
         std::cerr << "obj count:       " << objs.size() << std::endl;
         std::cerr << "obj_inst count:  " << obj_insts.size() << std::endl;
-        if (camera.time0 != camera.time1) {
-            std::cerr << "camera time:     " << camera.time0 << " - " << camera.time1 << std::endl;
+        if (cam->t0() != cam->t1()) {
+            std::cerr << "camera time:     " << cam->t0() << " - " << cam->t1() << std::endl;
         }
     }
-    // I don't think we need a destructor.
+    ~scene()
+    {
+        if (cam != nullptr) {
+            delete cam;
+        }
+    }
     int num_triangles()
     {
         int n = 0;
@@ -473,7 +464,7 @@ class scene {
         }
     }
 
-    scene_camera camera;
+    camera *cam;
     std::map<std::string, int> material_names_to_idx;
     std::vector<scene_material *> materials;
     std::vector<scene_sphere *> spheres;

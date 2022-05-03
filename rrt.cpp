@@ -72,9 +72,7 @@ vec3 *Rrt::render(scene *the_scene)
     }
 
     // Camera
-    camera cam(the_scene->camera.lookfrom, the_scene->camera.lookat, the_scene->camera.vup, the_scene->camera.vfov,
-               aspect_ratio, the_scene->camera.aperture, the_scene->camera.focus, the_scene->camera.time0,
-               the_scene->camera.time1);
+    camera cam(the_scene->cam);
 
     fb = new vec3[image_width * image_height];
 
