@@ -25,6 +25,7 @@ class triangle : public hittable {
         normal = get_normal(v0, v1, v2);
     };
     DEV virtual bool hit(const ray &r, FP_T tmin, FP_T tmax, hit_record &rec, bool debug) const;
+    DEV virtual bool bounding_box(FP_T time0, FP_T time1, aabb &output_box) const override;
     DEV virtual void print(int i) const;
     vec3 vertices[3];
     vec3 normal;
@@ -71,6 +72,18 @@ DEV bool triangle::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bo
     }
     // This means that there is a line intersection but not a ray intersection.
     return false;
+}
+
+DEV bool triangle::bounding_box(FP_T _time0, FP_T _time1, aabb &output_box) const
+{
+    point3 small(fmin(fmin(vertices[0].x(), vertices[1].x()), vertices[2].x()),
+                 fmin(fmin(vertices[0].y(), vertices[1].y()), vertices[2].y()),
+                 fmin(fmin(vertices[0].z(), vertices[1].z()), vertices[2].z()));
+    point3 big(fmax(fmax(vertices[0].x(), vertices[1].x()), vertices[2].x()),
+               fmax(fmax(vertices[0].y(), vertices[1].y()), vertices[2].y()),
+               fmax(fmax(vertices[0].z(), vertices[1].z()), vertices[2].z()));
+    output_box = aabb(small, big);
+    return true;
 }
 
 DEV void triangle::print(int i) const

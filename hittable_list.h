@@ -75,6 +75,7 @@ class hittable_list : public hittable {
 #endif
 
     DEV virtual bool hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const override;
+    DEV virtual bool bounding_box(FP_T time0, FP_T time1, aabb &output_box) const override;
     DEV virtual void print(int i) const override;
 
   public: // FIXME?  why public?
@@ -110,6 +111,31 @@ DEV bool hittable_list::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &re
     }
 
     return hit_anything;
+}
+
+DEV bool hittable_list::bounding_box(FP_T time0, FP_T time1, aabb &output_box) const
+{
+#ifndef USE_CUDA
+    if (objects.empty()) return false;
+#else
+    if (objects_size == 0) return false;
+#endif
+
+    aabb temp_box;
+    bool first_box = true;
+
+#ifndef USE_CUDA
+    for (const auto &object : objects) {
+#else
+    for (int i = 0; i < objects_size; i++) {
+        hittable *object = objects[i];
+#endif
+        if (!object->bounding_box(time0, time1, temp_box)) return false;
+        output_box = first_box ? temp_box : surrounding_box(output_box, temp_box);
+        first_box = false;
+    }
+
+    return true;
 }
 
 DEV void hittable_list::print(int i) const { printf("hitable_list print %d?\n", i); }

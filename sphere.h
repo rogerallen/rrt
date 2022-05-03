@@ -20,6 +20,8 @@ class sphere : public hittable {
     }
 #endif
     DEV virtual bool hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const override;
+    DEV virtual bool bounding_box(FP_T time0, FP_T time1, aabb &output_box) const override;
+
     DEV virtual void print(int i) const;
 
   public:
@@ -52,6 +54,12 @@ DEV bool sphere::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool
     rec.set_face_normal(r, outward_normal);
     rec.mat_ptr = mat_ptr;
 
+    return true;
+}
+
+DEV bool sphere::bounding_box(FP_T time0, FP_T time1, aabb &output_box) const
+{
+    output_box = aabb(center - vec3(radius, radius, radius), center + vec3(radius, radius, radius));
     return true;
 }
 
