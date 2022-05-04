@@ -17,6 +17,9 @@ class Rrt {
 #ifdef USE_CUDA
         ,
         int threads_x, int threads_y
+#else
+        ,
+        bool use_bvh
 #endif
         )
         : image_width(image_width), image_height(image_height), samples_per_pixel(samples_per_pixel),
@@ -24,6 +27,9 @@ class Rrt {
 #ifdef USE_CUDA
           ,
           num_threads_x(threads_x), num_threads_y(threads_y)
+#else
+          ,
+          bvh(use_bvh)
 #endif
     {
         aspect_ratio = 1.0 * image_width / image_height;
@@ -41,6 +47,8 @@ class Rrt {
 #ifdef USE_CUDA
     int num_threads_x;
     int num_threads_y;
+#else
+    bool bvh;
 #endif
     FP_T aspect_ratio;
     vec3 *fb;

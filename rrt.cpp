@@ -48,7 +48,7 @@ vec3 *Rrt::render(scene *the_scene)
     std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << samples_per_pixel
               << " samples per pixel\n";
 
-    auto world = new hittable_list();
+    auto world_list = new hittable_list();
 
     std::vector<material_ptr_t> materials;
     for (auto m : the_scene->materials) {
@@ -64,21 +64,26 @@ vec3 *Rrt::render(scene *the_scene)
     }
 
     for (auto s : the_scene->spheres) {
-        world->add(make_shared<sphere>(s->center, s->radius, materials[s->material_idx]));
+        world_list->add(make_shared<sphere>(s->center, s->radius, materials[s->material_idx]));
     }
     for (auto s : the_scene->moving_spheres) {
-        world->add(make_shared<moving_sphere>(s->center0, s->center1, s->time0, s->time1, s->radius,
-                                              materials[s->material_idx]));
+        world_list->add(make_shared<moving_sphere>(s->center0, s->center1, s->time0, s->time1, s->radius,
+                                                   materials[s->material_idx]));
     }
     scene_instance_triangle *instance_triangles = new scene_instance_triangle[the_scene->num_triangles()];
     the_scene->fill_instance_triangles(instance_triangles);
     for (int i = 0; i < the_scene->num_triangles(); ++i) {
         scene_instance_triangle t = instance_triangles[i];
-        world->add(make_shared<triangle>(t.vertices[0], t.vertices[1], t.vertices[2], materials[t.material_idx]));
+        world_list->add(make_shared<triangle>(t.vertices[0], t.vertices[1], t.vertices[2], materials[t.material_idx]));
     }
 
     int num_hittables = the_scene->num_triangles() + the_scene->spheres.size() + the_scene->moving_spheres.size();
     std::cerr << "num_hittables = " << num_hittables << "\n";
+
+    auto world_bvh = new bvh_node(*world_list, 0.0, 0.0);
+
+    hittable *world = world_list;
+    if (bvh) world = world_bvh;
 
     // Camera
     camera cam(*(the_scene->cam));

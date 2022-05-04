@@ -30,3 +30,16 @@ $ ./rrt -s 50 -tx 16 -ty 16 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s
 stats:11060,1280,720,50,3726,16,16,38.3823
 $ ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png 
 stats:11060,1280,720,50,1442,1024,1,16.3396
+
+5/3/2022 - on "gyre" RTX 3080, WSL2 system
+before & after BVH
+-----------------------------------------------------------------------------------------
+$ rm -f scenes/finalo.png && time make scenes/finalo.png
+stats:OpenMP,1200,800,10,4,n/a,n/a,22.5013
+$ rm -f scenes/finalc.png && time make scenes/finalc.png
+stats:SingleThread,1200,800,10,1,n/a,n/a,59.4418
+---- after -----
+$ rm -f scenes/finalo.png && time make scenes/finalo.png
+stats:OpenMP,1200,800,10,4,n/a,n/a,8.17923
+$ rm -f scenes/finalc.png && time make scenes/finalc.png
+stats:SingleThread,1200,800,10,1,n/a,n/a,11.0918

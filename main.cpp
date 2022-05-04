@@ -40,6 +40,7 @@ void usage(char *argv)
     std::cerr << "  -h <height>         : output image height. (800)\n";
     std::cerr << "  -s <samples>        : number of samples per pixel. (10)\n";
     std::cerr << "  -d <max_depth>      : may ray recursion depth. (50)\n";
+    std::cerr << "  -b                  : disable bvh acceleration (enabled).\n";
 #ifdef USE_CUDA
     std::cerr << "  -tx <num_threads_x> : number of threads per block in x. (8)\n";
     std::cerr << "  -ty <num_threads_y> : number of threads per block in y. (8)\n";
@@ -63,6 +64,7 @@ int main(int argc, char *argv[])
     scene *the_scene = nullptr;
     char *png_filename = nullptr;
     int max_depth = 50;
+    bool use_bvh = true;
 
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
@@ -106,6 +108,9 @@ int main(int argc, char *argv[])
                 checkCudaErrors(cudaSetDevice(device));
             }
 #endif
+            else if (argv[i][1] == 'b') {
+                use_bvh = false;
+            }
             else {
                 usage(argv[i]);
             }
@@ -129,6 +134,9 @@ int main(int argc, char *argv[])
 #ifdef USE_CUDA
                   ,
                   num_threads_x, num_threads_y
+#else
+                  ,
+                  use_bvh
 #endif
     );
     vec3 *fb = rrt.render(the_scene);
