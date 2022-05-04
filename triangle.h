@@ -6,7 +6,7 @@
 //   2 - 1    indices should go around in CCW direction
 //   |  /     so that the normal is cross(0->1,0->2)
 //   0
-DEV vec3 get_normal(vec3 v0, vec3 v1, vec3 v2)
+HOSTDEV vec3 get_normal(vec3 v0, vec3 v1, vec3 v2)
 {
     vec3 v01 = unit_vector(v1 - v0);
     vec3 v02 = unit_vector(v2 - v0);
@@ -16,23 +16,23 @@ DEV vec3 get_normal(vec3 v0, vec3 v1, vec3 v2)
 
 class triangle : public hittable {
   public:
-    DEV triangle() {}
-    DEV triangle(vec3 v0, vec3 v1, vec3 v2, material_ptr_t m) : mat_ptr(m)
+    HOSTDEV triangle() {}
+    HOSTDEV triangle(vec3 v0, vec3 v1, vec3 v2, material_ptr_t m) : mat_ptr(m)
     {
         vertices[0] = v0;
         vertices[1] = v1;
         vertices[2] = v2;
         normal = get_normal(v0, v1, v2);
     };
-    DEV virtual bool hit(const ray &r, FP_T tmin, FP_T tmax, hit_record &rec, bool debug) const;
-    DEV virtual bool bounding_box(FP_T time0, FP_T time1, aabb &output_box) const override;
-    DEV virtual void print(int i) const;
+    HOSTDEV virtual bool hit(const ray &r, FP_T tmin, FP_T tmax, hit_record &rec, bool debug) const;
+    HOSTDEV virtual bool bounding_box(FP_T time0, FP_T time1, aabb &output_box) const override;
+    HOSTDEV virtual void print(int i) const;
     vec3 vertices[3];
     vec3 normal;
     material_ptr_t mat_ptr;
 };
 
-DEV bool triangle::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
+HOSTDEV bool triangle::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
 {
     // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
     const FP_T EPSILON = 0.0000001;
@@ -74,7 +74,7 @@ DEV bool triangle::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bo
     return false;
 }
 
-DEV bool triangle::bounding_box(FP_T _time0, FP_T _time1, aabb &output_box) const
+HOSTDEV bool triangle::bounding_box(FP_T _time0, FP_T _time1, aabb &output_box) const
 {
     point3 small(fmin(fmin(vertices[0].x(), vertices[1].x()), vertices[2].x()),
                  fmin(fmin(vertices[0].y(), vertices[1].y()), vertices[2].y()),
@@ -86,7 +86,7 @@ DEV bool triangle::bounding_box(FP_T _time0, FP_T _time1, aabb &output_box) cons
     return true;
 }
 
-DEV void triangle::print(int i) const
+HOSTDEV void triangle::print(int i) const
 {
     mat_ptr->print(i);
     printf("triangle ");

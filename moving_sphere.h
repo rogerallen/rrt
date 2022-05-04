@@ -7,15 +7,15 @@
 
 class moving_sphere : public hittable {
   public:
-    DEV moving_sphere() {}
-    DEV moving_sphere(point3 cen0, point3 cen1, FP_T _time0, FP_T _time1, FP_T r, material_ptr_t m)
+    HOSTDEV moving_sphere() {}
+    HOSTDEV moving_sphere(point3 cen0, point3 cen1, FP_T _time0, FP_T _time1, FP_T r, material_ptr_t m)
         : center0(cen0), center1(cen1), time0(_time0), time1(_time1), radius(r), mat_ptr(m){};
 
-    DEV virtual bool hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const override;
-    DEV virtual bool bounding_box(FP_T _time0, FP_T _time1, aabb &output_box) const override;
-    DEV virtual void print(int i) const;
+    HOSTDEV virtual bool hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const override;
+    HOSTDEV virtual bool bounding_box(FP_T _time0, FP_T _time1, aabb &output_box) const override;
+    HOSTDEV virtual void print(int i) const;
 
-    DEV point3 center(FP_T time) const;
+    HOSTDEV point3 center(FP_T time) const;
 
   public:
     point3 center0, center1;
@@ -24,12 +24,12 @@ class moving_sphere : public hittable {
     material_ptr_t mat_ptr;
 };
 
-DEV point3 moving_sphere::center(FP_T time) const
+HOSTDEV point3 moving_sphere::center(FP_T time) const
 {
     return center0 + ((time - time0) / (time1 - time0)) * (center1 - center0);
 }
 
-DEV bool moving_sphere::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
+HOSTDEV bool moving_sphere::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
 {
     if (debug) printf("time=%f\n", r.time());
     vec3 oc = r.origin() - center(r.time());
@@ -57,7 +57,7 @@ DEV bool moving_sphere::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &re
     return true;
 }
 
-DEV bool moving_sphere::bounding_box(FP_T _time0, FP_T _time1, aabb &output_box) const
+HOSTDEV bool moving_sphere::bounding_box(FP_T _time0, FP_T _time1, aabb &output_box) const
 {
     aabb box0(center(_time0) - vec3(radius, radius, radius), center(_time0) + vec3(radius, radius, radius));
     aabb box1(center(_time1) - vec3(radius, radius, radius), center(_time1) + vec3(radius, radius, radius));
@@ -65,7 +65,7 @@ DEV bool moving_sphere::bounding_box(FP_T _time0, FP_T _time1, aabb &output_box)
     return true;
 }
 
-DEV void moving_sphere::print(int i) const
+HOSTDEV void moving_sphere::print(int i) const
 {
     mat_ptr->print(i);
     printf("moving sphere ");

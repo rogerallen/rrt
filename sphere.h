@@ -7,10 +7,10 @@
 
 class sphere : public hittable {
   public:
-    DEV sphere() {}
-    DEV sphere(point3 cen, FP_T r, material_ptr_t m) : center(cen), radius(r), mat_ptr(m){};
+    HOSTDEV sphere() {}
+    HOSTDEV sphere(point3 cen, FP_T r, material_ptr_t m) : center(cen), radius(r), mat_ptr(m){};
 #ifdef USE_CUDA
-    DEV ~sphere()
+    HOSTDEV ~sphere()
     {
         // NOTE -- this is deleting materials passed to the sphere
         // this works for our use case, but might not be best practice
@@ -19,10 +19,10 @@ class sphere : public hittable {
         mat_ptr = nullptr;
     }
 #endif
-    DEV virtual bool hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const override;
-    DEV virtual bool bounding_box(FP_T time0, FP_T time1, aabb &output_box) const override;
+    HOSTDEV virtual bool hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const override;
+    HOSTDEV virtual bool bounding_box(FP_T time0, FP_T time1, aabb &output_box) const override;
 
-    DEV virtual void print(int i) const;
+    HOSTDEV virtual void print(int i) const;
 
   public:
     point3 center;
@@ -30,7 +30,7 @@ class sphere : public hittable {
     material_ptr_t mat_ptr;
 };
 
-DEV bool sphere::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
+HOSTDEV bool sphere::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool debug) const
 {
     vec3 oc = r.origin() - center;
     auto a = r.direction().length_squared();
@@ -57,13 +57,13 @@ DEV bool sphere::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec, bool
     return true;
 }
 
-DEV bool sphere::bounding_box(FP_T time0, FP_T time1, aabb &output_box) const
+HOSTDEV bool sphere::bounding_box(FP_T time0, FP_T time1, aabb &output_box) const
 {
     output_box = aabb(center - vec3(radius, radius, radius), center + vec3(radius, radius, radius));
     return true;
 }
 
-DEV void sphere::print(int i) const
+HOSTDEV void sphere::print(int i) const
 {
     mat_ptr->print(i);
     printf("sphere ");

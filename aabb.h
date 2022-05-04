@@ -5,23 +5,31 @@
 
 class aabb {
   public:
-    DEV aabb() {}
-    DEV aabb(const point3 &a, const point3 &b)
+    HOSTDEV aabb() {}
+    HOSTDEV aabb(const point3 &a, const point3 &b)
     {
         minimum = a;
         maximum = b;
     }
 
-    DEV point3 min() const { return minimum; }
-    DEV point3 max() const { return maximum; }
+    HOSTDEV point3 min() const { return minimum; }
+    HOSTDEV point3 max() const { return maximum; }
 
-    DEV inline bool hit(const ray &r, FP_T t_min, FP_T t_max) const
+    HOSTDEV inline bool hit(const ray &r, FP_T t_min, FP_T t_max) const
     { // Andrew Kensler variant
         for (int a = 0; a < 3; a++) {
             auto invD = 1.0f / r.direction()[a];
             auto t0 = (min()[a] - r.origin()[a]) * invD;
             auto t1 = (max()[a] - r.origin()[a]) * invD;
-            if (invD < 0.0f) std::swap(t0, t1);
+            if (invD < 0.0f) {
+#ifndef USE_CUDA
+                std::swap(t0, t1);
+#else
+                auto tmp = t0;
+                t0 = t1;
+                t1 = tmp;
+#endif
+            }
             t_min = t0 > t_min ? t0 : t_min;
             t_max = t1 < t_max ? t1 : t_max;
             if (t_max <= t_min) return false;
@@ -33,7 +41,7 @@ class aabb {
     point3 maximum;
 };
 
-DEV aabb surrounding_box(aabb box0, aabb box1)
+HOSTDEV aabb surrounding_box(aabb box0, aabb box1)
 {
     point3 small(fmin(box0.min().x(), box1.min().x()), fmin(box0.min().y(), box1.min().y()),
                  fmin(box0.min().z(), box1.min().z()));

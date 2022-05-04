@@ -22,6 +22,7 @@ using std::sqrt;
 //#endif
 
 #ifndef USE_CUDA
+#define HOST
 #define HOSTDEV
 #define DEV
 #define CURAND_STATE_DEF
@@ -30,6 +31,7 @@ using std::sqrt;
 #define CURAND_STATE_COMMA
 #else
 #include <curand_kernel.h>
+#define HOST __host__
 #define HOSTDEV __host__ __device__
 #define DEV __device__
 #define CURAND_STATE_DEF curandState *state
@@ -48,7 +50,7 @@ const FP_T pi = 3.1415926535897932385;
 HOSTDEV inline FP_T degrees_to_radians(FP_T degrees) { return degrees * pi / 180.0; }
 
 // we handle this via other means when using CUDA
-#ifndef USE_CUDA
+//#ifndef USE_CUDA
 inline FP_T random_uniform()
 { // !!! changed from random_double !!!
     static std::uniform_real_distribution<FP_T> distribution(0.0, 1.0);
@@ -60,7 +62,12 @@ inline FP_T random_uniform(FP_T min, FP_T max)
     // Returns a random real in [min,max).
     return min + (max - min) * random_uniform();
 }
-#else
+inline int random_int(int min, int max)
+{
+    // Returns a random integer in [min,max].
+    return static_cast<int>(random_uniform(min, max + 1));
+}
+#ifdef USE_CUDA
 DEV inline FP_T random_uniform(curandState *state) { return curand_uniform(state); }
 DEV inline FP_T random_uniform(curandState *state, FP_T min, FP_T max)
 {

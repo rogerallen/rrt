@@ -1,5 +1,6 @@
 #include "rrt.h"
 
+#include "bvh.h"
 #include "camera.h"
 #include "hittable_list.h"
 #include "material.h"
@@ -72,7 +73,7 @@ vec3 *Rrt::render(scene *the_scene)
     }
 
     // Camera
-    camera cam(the_scene->cam);
+    camera cam(*(the_scene->cam));
 
     fb = new vec3[image_width * image_height];
 

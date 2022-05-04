@@ -9,14 +9,14 @@ class material {
   public:
     DEV virtual bool scatter(CURAND_STATE_DEF_COMMA const ray &r_in, const hit_record &rec, color &attenuation,
                              ray &scattered, bool debug) const = 0;
-    DEV virtual void print(int i) const = 0;
+    HOSTDEV virtual void print(int i) const = 0;
 };
 
 // ==========================================================================================
 
 class lambertian : public material {
   public:
-    DEV lambertian(const color &a) : albedo(a) {}
+    HOSTDEV lambertian(const color &a) : albedo(a) {}
 
     DEV virtual bool scatter(CURAND_STATE_DEF_COMMA const ray &r_in, const hit_record &rec, color &attenuation,
                              ray &scattered, bool debug) const override
@@ -30,7 +30,7 @@ class lambertian : public material {
         attenuation = albedo;
         return true;
     }
-    DEV virtual void print(int i) const
+    HOSTDEV virtual void print(int i) const
     {
         printf("material m%d lambertian ", i);
         albedo.print();
@@ -45,7 +45,7 @@ class lambertian : public material {
 
 class metal : public material {
   public:
-    DEV metal(const color &a, FP_T f) : albedo(a), fuzz(f < 1 ? f : 1) {}
+    HOSTDEV metal(const color &a, FP_T f) : albedo(a), fuzz(f < 1 ? f : 1) {}
 
     DEV virtual bool scatter(CURAND_STATE_DEF_COMMA const ray &r_in, const hit_record &rec, color &attenuation,
                              ray &scattered, bool debug) const override
@@ -55,7 +55,7 @@ class metal : public material {
         attenuation = albedo;
         return (dot(scattered.direction(), rec.normal) > 0);
     }
-    DEV virtual void print(int i) const
+    HOSTDEV virtual void print(int i) const
     {
         printf("material m%d metal ", i);
         albedo.print();
@@ -71,7 +71,7 @@ class metal : public material {
 
 class dielectric : public material {
   public:
-    DEV dielectric(FP_T index_of_refraction) : ir(index_of_refraction) {}
+    HOSTDEV dielectric(FP_T index_of_refraction) : ir(index_of_refraction) {}
 
     DEV virtual bool scatter(CURAND_STATE_DEF_COMMA const ray &r_in, const hit_record &rec, color &attenuation,
                              ray &scattered, bool debug) const override
@@ -94,13 +94,13 @@ class dielectric : public material {
         scattered = ray(rec.p, direction, r_in.time());
         return true;
     }
-    DEV virtual void print(int i) const { printf("material m%d dielectric %f\n", i, ir); }
+    HOSTDEV virtual void print(int i) const { printf("material m%d dielectric %f\n", i, ir); }
 
   public:
     FP_T ir; // Index of Refraction
 
   private:
-    DEV static FP_T reflectance(FP_T cosine, FP_T ref_idx)
+    HOSTDEV static FP_T reflectance(FP_T cosine, FP_T ref_idx)
     {
         // Use Schlick's approximation for reflectance.
         auto r0 = (1 - ref_idx) / (1 + ref_idx);

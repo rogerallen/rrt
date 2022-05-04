@@ -15,7 +15,9 @@ NVCC_FLAGS     = -ccbin $(HOST_COMPILER) -m64 $(NVCC_DBG) $(NVCC_GENCODE)
 
 SRCS = main.cpp rrt.cu
 SRCSC = main.cpp rrt.cpp
-INCS = rrt.h vec3.h ray.h hittable.h hittable_list.h sphere.h triangle.h camera.h material.h scene.h stb_image_write.h
+INCS = rrt.h scene.h \
+	aabb.h bvh.h camera.h hittable.h hittable_list.h material.h ray.h sphere.h triangle.h vec3.h \
+	stb_image_write.h
 
 # default
 all: rrt rrtd rrtc
@@ -32,13 +34,13 @@ rrtc: $(SRCSC) $(INCS)
 	$(NVCC) $(NVCC_DBG) -DFP_T=float $(SRCSC) -o $@
 
 # output images for float CUDA, double CUDA & C++
-%.png: %.txt
+%.png: %.txt rrt
 	./rrt -i $< -o $@
 
-%d.png: %.txt
+%d.png: %.txt rrtd
 	./rrtd -i $< -o $@
 
-%c.png: %.txt
+%c.png: %.txt rrtc
 	./rrtc -i $< -o $@
 
 # some hints on running nsight systems & nsight compute

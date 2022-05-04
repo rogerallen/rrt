@@ -1,5 +1,6 @@
 #include "rrt.h"
 
+#include "bvh.h"
 #include "camera.h"
 #include "hittable_list.h"
 #include "material.h"
@@ -123,7 +124,7 @@ __global__ void create_world(hittable **d_world, camera *d_scene_camera, camera 
 
         // we have to copy-construct since the camera has a DEV-only get_ray function that depends
         // on curand state.
-        *d_camera = new camera(d_scene_camera);
+        *d_camera = new camera(*d_scene_camera);
 
         for (int i = 0; i < num_materials; ++i) {
             scene_material *m = &(d_scene_materials[i]);
