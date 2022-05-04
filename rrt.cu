@@ -237,7 +237,7 @@ vec3 *Rrt::render(scene *the_scene)
     hittable **d_world;
     checkCudaErrors(cudaMallocManaged((void **)&d_world, sizeof(hittable *)));
 
-    int num_hittables = num_instance_triangles + num_spheres;
+    int num_hittables = num_instance_triangles + num_spheres + num_moving_spheres;
     std::cerr << "num_hittables = " << num_hittables << "\n";
 
     create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,

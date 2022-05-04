@@ -45,6 +45,9 @@ color ray_color(const ray &r, const hittable *world, int depth, bool debug)
 vec3 *Rrt::render(scene *the_scene)
 {
 
+    std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << samples_per_pixel
+              << " samples per pixel\n";
+
     auto world = new hittable_list();
 
     std::vector<material_ptr_t> materials;
@@ -74,16 +77,21 @@ vec3 *Rrt::render(scene *the_scene)
         world->add(make_shared<triangle>(t.vertices[0], t.vertices[1], t.vertices[2], materials[t.material_idx]));
     }
 
+    int num_hittables = the_scene->num_triangles() + the_scene->spheres.size() + the_scene->moving_spheres.size();
+    std::cerr << "num_hittables = " << num_hittables << "\n";
+
     // Camera
     camera cam(*(the_scene->cam));
 
     fb = new vec3[image_width * image_height];
 
+    clock_t start, stop;
+    start = clock();
     // Render
 #pragma omp parallel for
     for (int j = image_height - 1; j >= 0; --j) {
 #ifndef _OPENMP
-        std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
+        if (j % 10 == 0) std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
 #endif
 #pragma omp parallel for
         for (int i = 0; i < image_width; ++i) {
@@ -107,7 +115,25 @@ vec3 *Rrt::render(scene *the_scene)
             fb[j * image_width + i] = pixel_color;
         }
     }
+#ifndef _OPENMP
     std::cerr << "\n";
+#endif
+
+    stop = clock();
+    double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
+    std::cerr << "took " << timer_seconds << " seconds.\n";
+
+#ifndef _OPENMP
+    std::string cpu_version = "SingleThread";
+    std::string num_threads = "1";
+#else
+    std::string cpu_version = "OpenMP";
+    std::string num_threads = std::to_string(omp_get_num_threads());
+#endif
+
+    std::cerr << "stats:" << cpu_version << "," << image_width << "," << image_height << "," << samples_per_pixel << ","
+              << num_threads << ","
+              << "n/a,n/a," << timer_seconds << "\n";
 
     return fb;
 }
