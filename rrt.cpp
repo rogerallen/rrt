@@ -85,8 +85,13 @@ vec3 *Rrt::render(scene *the_scene)
 
     fb = new vec3[image_width * image_height];
 
+#ifndef _OPENMP
     clock_t start, stop;
     start = clock();
+#else
+    double start, stop;
+    start = omp_get_wtime();
+#endif
     // Render
 #pragma omp parallel for
     for (int j = image_height - 1; j >= 0; --j) {
@@ -119,8 +124,13 @@ vec3 *Rrt::render(scene *the_scene)
     std::cerr << "\n";
 #endif
 
+#ifndef _OPENMP
     stop = clock();
     double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
+#else
+    stop = omp_get_wtime();
+    double timer_seconds = stop - start;
+#endif
     std::cerr << "took " << timer_seconds << " seconds.\n";
 
 #ifndef _OPENMP
