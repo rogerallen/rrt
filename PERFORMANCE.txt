@@ -43,3 +43,16 @@ $ rm -f scenes/finalo.png && time make scenes/finalo.png
 stats:OpenMP,1200,800,10,4,n/a,n/a,8.17923
 $ rm -f scenes/finalc.png && time make scenes/finalc.png
 stats:SingleThread,1200,800,10,1,n/a,n/a,11.0918
+
+5/1/2022 - on "rainbow" RTX 2070, Ubuntu Linux 20.04
+BVH before & after
+-----------------------------------------------------------------------------------------
+$ rm -f scenes/finalo.png && time make scenes/finalo.png
+stats:OpenMP,1200,800,10,12,n/a,n/a,10.6774
+$ rm -f scenes/finalc.png && time make scenes/finalc.png
+stats:SingleThread,1200,800,10,1,n/a,n/a,41.5973
+---- after -----
+$ rm -f scenes/finalo.png && time make scenes/finalo.png
+stats:OpenMP,1200,800,10,12,n/a,n/a,4.3835
+$ rm -f scenes/finalc.png && time make scenes/finalc.png
+stats:SingleThread,1200,800,10,1,n/a,n/a,7.38456
