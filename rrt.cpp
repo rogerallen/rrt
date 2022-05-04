@@ -138,7 +138,7 @@ vec3 *Rrt::render(scene *the_scene)
     std::string num_threads = "1";
 #else
     std::string cpu_version = "OpenMP";
-    std::string num_threads = std::to_string(omp_get_num_threads());
+    std::string num_threads = std::to_string(omp_get_max_threads());
 #endif
 
     std::cerr << "stats:" << cpu_version << "," << image_width << "," << image_height << "," << samples_per_pixel << ","
