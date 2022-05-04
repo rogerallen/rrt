@@ -26,6 +26,7 @@ There are 3 executables:
 - `rrt` is the CUDA accelerated code using `float` floating point
 - `rrtd` is the CUDA accelerated code using `double` floating point
 - `rrtc` is the less accelerated C++ code
+- `rrto` is the CPU/OpenMP accelerated C++ code
 
 ```
 Usage: rrt [options]

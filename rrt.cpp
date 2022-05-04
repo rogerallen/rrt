@@ -11,6 +11,8 @@
 #include <iostream>
 #include <vector>
 
+#include <omp.h>
+
 color ray_color(const ray &r, const hittable *world, int depth, bool debug)
 {
     hit_record rec;
@@ -78,8 +80,12 @@ vec3 *Rrt::render(scene *the_scene)
     fb = new vec3[image_width * image_height];
 
     // Render
+#pragma omp parallel for
     for (int j = image_height - 1; j >= 0; --j) {
+#ifndef _OPENMP
         std::cerr << "\rScanlines remaining: " << j << ' ' << std::flush;
+#endif
+#pragma omp parallel for
         for (int i = 0; i < image_width; ++i) {
             bool debug = false;
             color pixel_color(0, 0, 0);

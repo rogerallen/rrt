@@ -8,8 +8,10 @@ NCU           ?= ncu
 NVCC_GENCODE ?= -arch sm_86
 
 # select one of these for Debug vs. Release 
-#NVCC_DBG       = -g -G --expt-relaxed-constexpr
-NVCC_DBG       = -lineinfo -O3 --expt-relaxed-constexpr
+HOST_DBG       = -g
+HOST_REL       = -O3
+#NVCC_DBG       = $(HOST_DBG) -G --expt-relaxed-constexpr
+NVCC_DBG       = -lineinfo $(HOST_REL) --expt-relaxed-constexpr
 
 NVCC_FLAGS     = -ccbin $(HOST_COMPILER) -m64 $(NVCC_DBG) $(NVCC_GENCODE)
 
@@ -20,18 +22,25 @@ INCS = rrt.h scene.h \
 	stb_image_write.h
 
 # default
-all: rrt rrtd rrtc
+all: rrt rrtd rrtc rrto
 
 # main binaries
+# 1) CUDA with single-precision
 rrt: $(SRCS) $(INCS)
 	$(NVCC) $(NVCC_FLAGS) -DFP_T=float -DUSE_CUDA $(SRCS) -o $@ 
 
+# 2) CUDA with double-precision
 rrtd: $(SRCS) $(INCS)
 	$(NVCC) $(NVCC_FLAGS) -DFP_T=double -DUSE_CUDA $(SRCS) -o $@ 
 
+# 3) CPU with single-precision
 # to be fair to CPU, adjust this to use double, but using float catches bugs during development, so...
 rrtc: $(SRCSC) $(INCS)
-	$(NVCC) $(NVCC_DBG) -DFP_T=float $(SRCSC) -o $@
+	$(HOST_COMPILER) $(HOST_REL) -DFP_T=float $(SRCSC) -o $@
+
+# 3) CPU with OpenMP & double-precision
+rrto: $(SRCSC) $(INCS)
+	$(HOST_COMPILER) $(HOST_REL) -fopenmp -DFP_T=double $(SRCSC) -o $@ -lgomp
 
 # output images for float CUDA, double CUDA & C++
 %.png: %.txt rrt
@@ -43,6 +52,9 @@ rrtc: $(SRCSC) $(INCS)
 %c.png: %.txt rrtc
 	./rrtc -i $< -o $@
 
+%o.png: %.txt rrto
+	./rrto -i $< -o $@
+	
 # some hints on running nsight systems & nsight compute
 # default run args for profiling
 RUNARGS ?= -s 1 -i scenes/test1.txt -w 640 -h 480 -o scenes/test1.png
