@@ -42,12 +42,8 @@ color ray_color(const ray &r, const hittable *world, int depth, bool debug)
     return c;
 }
 
-vec3 *Rrt::render(scene *the_scene)
+hittable *create_world(scene *the_scene, bool bvh)
 {
-
-    std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << samples_per_pixel
-              << " samples per pixel\n";
-
     auto world_list = new hittable_list();
 
     std::vector<material_ptr_t> materials;
@@ -80,10 +76,22 @@ vec3 *Rrt::render(scene *the_scene)
     int num_hittables = the_scene->num_triangles() + the_scene->spheres.size() + the_scene->moving_spheres.size();
     std::cerr << "num_hittables = " << num_hittables << "\n";
 
-    auto world_bvh = new bvh_node(*world_list, 0.0, 0.0);
+    auto world_bvh = new bvh_node(*world_list, the_scene->cam->t0(), the_scene->cam->t1());
 
     hittable *world = world_list;
     if (bvh) world = world_bvh;
+
+    return world;
+}
+
+vec3 *Rrt::render(scene *the_scene)
+{
+
+    std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << samples_per_pixel
+              << " samples per pixel\n";
+
+    // World
+    auto world = create_world(the_scene, bvh);
 
     // Camera
     camera cam(*(the_scene->cam));
