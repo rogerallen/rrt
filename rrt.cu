@@ -246,6 +246,8 @@ vec3 *Rrt::render(scene *the_scene)
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 
+    // FIXME add bvh here, someday.  Can't do this yet.
+
 #if SUPPORTS_CUDA_MEM_PREFETCH_ASYNC == 1
     // Prefetch the FB to the GPU
     int device = -1;

@@ -76,10 +76,12 @@ hittable *create_world(scene *the_scene, bool bvh)
     int num_hittables = the_scene->num_triangles() + the_scene->spheres.size() + the_scene->moving_spheres.size();
     std::cerr << "num_hittables = " << num_hittables << "\n";
 
-    auto world_bvh = new bvh_node(*world_list, the_scene->cam->t0(), the_scene->cam->t1());
-
     hittable *world = world_list;
-    if (bvh) world = world_bvh;
+
+    if (bvh) {
+        auto world_bvh = new bvh_node(*world_list, the_scene->cam->t0(), the_scene->cam->t1());
+        world = world_bvh;
+    }
 
     return world;
 }

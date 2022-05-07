@@ -130,13 +130,10 @@ int main(int argc, char *argv[])
     }
 
     // Render Scene to Framebuffer
-    Rrt rrt = Rrt(image_width, image_height, num_samples, max_depth
+    Rrt rrt = Rrt(image_width, image_height, num_samples, max_depth, use_bvh
 #ifdef USE_CUDA
                   ,
                   num_threads_x, num_threads_y
-#else
-                  ,
-                  use_bvh
 #endif
     );
     vec3 *fb = rrt.render(the_scene);

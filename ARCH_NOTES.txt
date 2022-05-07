@@ -1,0 +1,57 @@
+# 5/7/2022
+
+Thinking about how to get BVH to GPU.
+I don't think I want to implement BVH creation on GPU.  Mainly I'm not wanting to implement std::sort() 
+on the GPU.  But, the below is certainly not a minimal amount of work so maybe this is a dumb tradeoff.
+We'll see...
+
+So, I'd rather copy the CPU-created BVH to the GPU.
+This also gives me an excuse to re-think memory management, ownership & creation of GPU data.
+
+Here is where we are:
+
+render state
+    pix       fb[], 
+    int       image_width, image_height, samples_per_pixel, max_depth, 
+    camera    d_camera, 
+    hittables d_world, 
+              hittable_list:
+                sphere        d_spheres[]
+                moving_sphere d_moving_spheres[]
+                triangle      d_triangles[]
+                      material d_materials[]  -- referenced & deleted by hittables   
+    nvrand    d_rand_state
+
+Here are thoughts about future...
+
+render state
+    pix       fb[], 
+    nvrand    d_rand_state
+    int       image_width, image_height, samples_per_pixel, max_depth, 
+    camera    h/d_camera, 
+    material *h/d_materials[] points into one of these arrays
+        lambertian h/d_lambertian[]
+        metal h/d_metal[]
+        glass h/d_glass[]
+    hittable *h/d_hittables_list|array?[] points into one of these arrays
+        sphere        h/d_spheres[]
+        moving_sphere h/d_moving_spheres[]
+        triangle      h/d_triangles[]
+        // of course, these (or just gpu?) can be part of the hittable_list!
+        host_hittable *h_hittables_bvh - can be dynamic & different from GPU bvh
+        gpu_hittable d_hittables_bvh[] - should be static & only for traversal
+    hittable *h/d_world = h/d_hittable_ARRAY || h/d_hittable_bvh
+
+in my use case, the scene is static, once parsed.
+
+make hittable_array to make list.objects static instead of dynamic.
+make everything on host & then copy-construct to the GPU
+
+hmm mat_ptr is only put into the hit_record mat_ptr.  Could use index?
+Yes, ray_color() calls mat_ptr->scatter.  If ray_color had materials[] that works.
+Since this adds an indirection, not sure this is useful.
+But, it does point out mem management could be done by "world" owner
+
+Let's do a couple things...
+1) make all input state (all but fb) part of a class and send that to render
+2) do copy-construct trick to materials
