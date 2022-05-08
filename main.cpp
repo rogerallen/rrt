@@ -68,7 +68,13 @@ int main(int argc, char *argv[])
 
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
-            if (argv[i][1] == 'w') {
+            if (argv[i][1] == 'i') {
+                the_scene_filename = argv[++i];
+            }
+            else if (argv[i][1] == 'o') {
+                png_filename = argv[++i];
+            }
+            else if (argv[i][1] == 'w') {
                 image_width = atoi(argv[++i]);
             }
             else if (argv[i][1] == 'h') {
@@ -79,6 +85,9 @@ int main(int argc, char *argv[])
             }
             else if (argv[i][1] == 'd') {
                 max_depth = atoi(argv[++i]);
+            }
+            else if (argv[i][1] == 'b') {
+                use_bvh = false;
             }
 #ifdef USE_CUDA
             else if (argv[i][1] == 't') {
@@ -92,14 +101,6 @@ int main(int argc, char *argv[])
                     usage(argv[i]);
                 }
             }
-#endif
-            else if (argv[i][1] == 'i') {
-                the_scene_filename = argv[++i];
-            }
-            else if (argv[i][1] == 'o') {
-                png_filename = argv[++i];
-            }
-#ifdef USE_CUDA
             else if (argv[i][1] == 'q') {
                 query_cuda_info();
             }
@@ -108,9 +109,6 @@ int main(int argc, char *argv[])
                 checkCudaErrors(cudaSetDevice(device));
             }
 #endif
-            else if (argv[i][1] == 'b') {
-                use_bvh = false;
-            }
             else {
                 usage(argv[i]);
             }
