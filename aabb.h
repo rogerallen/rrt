@@ -36,6 +36,13 @@ class aabb {
         }
         return true;
     }
+    HOSTDEV void print(int i) const
+    {
+        printf("aabb %i ", i);
+        minimum.print();
+        printf(" - ");
+        maximum.print();
+    }
 
     point3 minimum;
     point3 maximum;

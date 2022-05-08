@@ -88,13 +88,16 @@ HOSTDEV bool triangle::bounding_box(FP_T _time0, FP_T _time1, aabb &output_box) 
 
 HOSTDEV void triangle::print(int i) const
 {
-    mat_ptr->print(i);
-    printf("triangle ");
+    printf("triangle %d v ", i);
     vertices[0].print();
+    printf(" ");
     vertices[1].print();
+    printf(" ");
     vertices[2].print();
+    printf(" n ");
     normal.print();
-    printf(" m%d\n", i);
+    printf(" ");
+    mat_ptr->print(i);
 }
 
 #endif

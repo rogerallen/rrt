@@ -33,10 +33,11 @@ render state
         lambertian h/d_lambertian[]
         metal h/d_metal[]
         glass h/d_glass[]
-    hittable *h/d_hittables_list|array?[] points into one of these arrays
+    hittable *h/d_hittables[] (NOT hittable_list) points into one of these arrays
         sphere        h/d_spheres[]
         moving_sphere h/d_moving_spheres[]
         triangle      h/d_triangles[]
+        hittable_list *h/d_world (has objects[] inside)
         // of course, these (or just gpu?) can be part of the hittable_list!
         host_hittable *h_hittables_bvh - can be dynamic & different from GPU bvh
         gpu_hittable d_hittables_bvh[] - should be static & only for traversal

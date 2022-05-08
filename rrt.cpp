@@ -80,6 +80,7 @@ hittable *create_world(scene *the_scene, bool bvh)
 
     if (bvh) {
         auto world_bvh = new bvh_node(*world_list, the_scene->cam->t0(), the_scene->cam->t1());
+        if (0) world_bvh->print(0);
         world = world_bvh;
     }
 

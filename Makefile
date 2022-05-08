@@ -18,7 +18,7 @@ NVCC_FLAGS     = -ccbin $(HOST_COMPILER) -m64 $(NVCC_DBG) $(NVCC_GENCODE)
 SRCS = main.cpp rrt.cu
 SRCSC = main.cpp rrt.cpp
 INCS = rrt.h scene.h \
-	aabb.h bvh.h camera.h hittable.h hittable_list.h material.h ray.h sphere.h triangle.h vec3.h \
+	aabb.h bvh.h camera.h hittable.h hittable_list.h material.h moving_sphere.h ray.h sphere.h triangle.h vec3.h \
 	stb_image_write.h
 
 # default

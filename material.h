@@ -32,7 +32,7 @@ class lambertian : public material {
     }
     HOSTDEV virtual void print(int i) const
     {
-        printf("material m%d lambertian ", i);
+        printf("lambertian %d a ", i);
         albedo.print();
         printf("\n");
     }
@@ -57,9 +57,9 @@ class metal : public material {
     }
     HOSTDEV virtual void print(int i) const
     {
-        printf("material m%d metal ", i);
+        printf("metal %d a ", i);
         albedo.print();
-        printf(" %f\n", fuzz);
+        printf(" f %f\n", fuzz);
     }
 
   public:
@@ -94,7 +94,7 @@ class dielectric : public material {
         scattered = ray(rec.p, direction, r_in.time());
         return true;
     }
-    HOSTDEV virtual void print(int i) const { printf("material m%d dielectric %f\n", i, ir); }
+    HOSTDEV virtual void print(int i) const { printf("dielectric %d ir %f\n", i, ir); }
 
   public:
     FP_T ir; // Index of Refraction

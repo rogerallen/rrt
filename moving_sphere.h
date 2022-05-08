@@ -67,13 +67,12 @@ HOSTDEV bool moving_sphere::bounding_box(FP_T _time0, FP_T _time1, aabb &output_
 
 HOSTDEV void moving_sphere::print(int i) const
 {
-    mat_ptr->print(i);
-    printf("moving sphere ");
+    printf("moving sphere %d c ", i);
     center0.print();
     printf(" - ");
     center1.print();
-    printf("\n %f - %f\n", time0, time1);
-    printf(" %f m%d\n", radius, i);
+    printf(" t %f - %f r %f ", time0, time1, radius);
+    mat_ptr->print(i);
 }
 
 #endif

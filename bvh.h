@@ -130,6 +130,21 @@ HOSTDEV bool bvh_node::hit(const ray &r, FP_T t_min, FP_T t_max, hit_record &rec
     return hit_left || hit_right;
 }
 
-HOSTDEV void bvh_node::print(int i) const { printf("bvh_node print %d?\n", i); }
+HOSTDEV void bvh_node::print(int i) const
+{
+    printf("bvh_node %d ", i);
+    box.print(i);
+    printf("\n");
+    for (int j = 0; j < i; j++) {
+        printf(" ");
+    }
+    printf("LEFT: ");
+    left->print(i + 1);
+    for (int j = 0; j < i; j++) {
+        printf(" ");
+    }
+    printf("RIGHT: ");
+    right->print(i + 1);
+}
 
 #endif

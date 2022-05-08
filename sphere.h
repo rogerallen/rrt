@@ -65,10 +65,10 @@ HOSTDEV bool sphere::bounding_box(FP_T time0, FP_T time1, aabb &output_box) cons
 
 HOSTDEV void sphere::print(int i) const
 {
-    mat_ptr->print(i);
-    printf("sphere ");
+    printf("sphere %d ", i);
     center.print();
-    printf(" %f m%d\n", radius, i);
+    printf(" %f ", radius);
+    mat_ptr->print(i);
 }
 
 #endif
