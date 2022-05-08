@@ -73,6 +73,11 @@ DEV inline FP_T random_uniform(curandState *state, FP_T min, FP_T max)
 {
     return min + (max - min) * curand_uniform(state);
 }
+DEV inline int random_int(curandState *state, int min, int max)
+{
+    // Returns a random integer in [min,max].
+    return static_cast<int>(random_uniform(state, min, max + 1));
+}
 #endif
 
 inline double clamp(FP_T x, FP_T min, FP_T max)

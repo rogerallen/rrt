@@ -62,7 +62,10 @@ class hittable_list : public hittable {
     {
         // increment reserve
         objects_reserve += OBJECTS_COUNT;
-        hittable **new_objects = new hittable *[objects_reserve]; // FIXME new might fail someday
+        hittable **new_objects = new hittable *[objects_reserve];
+        if (new_objects == nullptr) {
+            printf("ERROR: increment_reserve new failed!\n");
+        }
         // copy from old to new
         for (int i = 0; i < objects_size; i++) {
             new_objects[i] = objects[i];
@@ -83,9 +86,9 @@ class hittable_list : public hittable {
     std::vector<shared_ptr<hittable>> objects;
 #else
     hittable **objects;
-    int objects_size;            // how many actual objects
-    int objects_reserve;         // how many objects can we handle
-    const int OBJECTS_COUNT = 4; // how many objects to allocate and increment
+    int objects_size;             // how many actual objects
+    int objects_reserve;          // how many objects can we handle
+    const int OBJECTS_COUNT = 32; // how many objects to allocate and increment
 #endif
 };
 

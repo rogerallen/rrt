@@ -116,11 +116,11 @@ __global__ void create_world(hittable **d_world, camera *d_scene_camera, camera 
                              scene_material *d_scene_materials, material **d_materials, int num_spheres,
                              scene_sphere *d_scene_spheres, int num_moving_spheres,
                              scene_moving_sphere *d_scene_moving_spheres, int num_triangles,
-                             scene_instance_triangle *d_scene_triangles, FP_T aspect_ratio)
+                             scene_instance_triangle *d_scene_triangles, FP_T aspect_ratio, bool bvh)
 {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
 
-        *d_world = new hittable_list();
+        hittable_list *d_hittable_list = new hittable_list();
 
         // we have to copy-construct since the camera has a DEV-only get_ray function that depends
         // on curand state.
@@ -141,18 +141,25 @@ __global__ void create_world(hittable **d_world, camera *d_scene_camera, camera 
 
         for (int i = 0; i < num_spheres; ++i) {
             scene_sphere *s = &(d_scene_spheres[i]);
-            ((hittable_list *)*d_world)->add(new sphere(s->center, s->radius, d_materials[s->material_idx]));
+            d_hittable_list->add(new sphere(s->center, s->radius, d_materials[s->material_idx]));
         }
         for (int i = 0; i < num_moving_spheres; ++i) {
             scene_moving_sphere *s = &(d_scene_moving_spheres[i]);
-            ((hittable_list *)*d_world)
-                ->add(new moving_sphere(s->center0, s->center1, s->time0, s->time1, s->radius,
-                                        d_materials[s->material_idx]));
+            d_hittable_list->add(
+                new moving_sphere(s->center0, s->center1, s->time0, s->time1, s->radius, d_materials[s->material_idx]));
         }
         for (int i = 0; i < num_triangles; ++i) {
             scene_instance_triangle *t = &(d_scene_triangles[i]);
-            ((hittable_list *)*d_world)
-                ->add(new triangle(t->vertices[0], t->vertices[1], t->vertices[2], d_materials[t->material_idx]));
+            d_hittable_list->add(
+                new triangle(t->vertices[0], t->vertices[1], t->vertices[2], d_materials[t->material_idx]));
+        }
+
+        *d_world = d_hittable_list;
+
+        if (bvh) {
+            auto world_bvh = new bvh_node(d_hittable_list, (*d_camera)->t0(), (*d_camera)->t1());
+            if (1) world_bvh->print(0);
+            *d_world = world_bvh;
         }
     }
 }
@@ -242,7 +249,7 @@ vec3 *Rrt::render(scene *the_scene)
 
     create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,
                            num_spheres, d_scene_spheres, num_moving_spheres, d_scene_moving_spheres,
-                           num_instance_triangles, d_instance_triangles, aspect_ratio);
+                           num_instance_triangles, d_instance_triangles, aspect_ratio, bvh);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
 

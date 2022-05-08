@@ -12,7 +12,7 @@ class bvh_node : public hittable {
   public:
     HOSTDEV bvh_node();
 
-    HOST bvh_node(const hittable_list &list, FP_T time0, FP_T time1)
+    DEV bvh_node(const hittable_list &list, FP_T time0, FP_T time1)
         : bvh_node(list.objects, 0,
 #ifndef USE_CUDA
                    list.objects.size(),
@@ -23,7 +23,7 @@ class bvh_node : public hittable {
     {
     }
 
-    HOST bvh_node(
+    DEV bvh_node(
 #ifndef USE_CUDA
         const std::vector<shared_ptr<hittable>> &src_objects,
 #else
@@ -43,25 +43,41 @@ class bvh_node : public hittable {
     aabb box;
 };
 
-inline bool box_compare(const hittable_ptr_t a, const hittable_ptr_t b, int axis)
+DEV inline bool box_compare(const hittable_ptr_t a, const hittable_ptr_t b, int axis)
 {
     aabb box_a;
     aabb box_b;
 
     if (!a->bounding_box(0, 0, box_a) || !b->bounding_box(0, 0, box_b))
-        std::cerr << "No bounding box in bvh_node constructor.\n";
+        printf("ERROR: No bounding box in bvh_node constructor.\n");
 
     return box_a.min().e[axis] < box_b.min().e[axis];
 }
 
-bool box_x_compare(const hittable_ptr_t a, const hittable_ptr_t b) { return box_compare(a, b, 0); }
+DEV bool box_x_compare(const hittable_ptr_t a, const hittable_ptr_t b) { return box_compare(a, b, 0); }
 
-bool box_y_compare(const hittable_ptr_t a, const hittable_ptr_t b) { return box_compare(a, b, 1); }
+DEV bool box_y_compare(const hittable_ptr_t a, const hittable_ptr_t b) { return box_compare(a, b, 1); }
 
-bool box_z_compare(const hittable_ptr_t a, const hittable_ptr_t b) { return box_compare(a, b, 2); }
+DEV bool box_z_compare(const hittable_ptr_t a, const hittable_ptr_t b) { return box_compare(a, b, 2); }
 
-// This is a host-only method
-HOST bvh_node::bvh_node(
+#ifdef USE_CUDA
+DEV void dev_sort(const hittable_ptr_t *a, const hittable_ptr_t *b,
+                  bool (*comparator)(const hittable_ptr_t a, const hittable_ptr_t b))
+{
+    // simplest sort for now.  FIXME
+    for (int i = 0; a + i < b; i++) {
+        for (int j = 0; a + j < b; j++) {
+            if (!((*comparator)(*(a + i), *(a + j)))) {
+                const hittable *tmp = *(a + i);
+                *(a + i) = *(a + j);
+                *(a + j) = tmp;
+            }
+        }
+    }
+}
+#endif
+
+DEV bvh_node::bvh_node(
 #ifndef USE_CUDA
     const std::vector<shared_ptr<hittable>> &src_objects,
 #else
@@ -69,9 +85,25 @@ HOST bvh_node::bvh_node(
 #endif
     size_t start, size_t end, FP_T time0, FP_T time1)
 {
-    auto objects = src_objects; // Create a modifiable array of the source scene objects
-
+    printf("bvh_node entry\n");
+    // Create a modifiable array of the source scene objects
+#ifndef USE_CUDA
+    auto objects = src_objects;
+#else
+    hittable **objects = new hittable *[end - start + 1];
+    for (int i = start; i < end; i++) {
+        objects[i] = *(src_objects + i);
+    }
+#endif
+    printf("copied\n");
+#ifndef USE_CUDA
     int axis = random_int(0, 2);
+#else
+    // passing in CURAND state is annoying for bvh construction
+    static int axis = 0;
+    axis = (axis + 1) % 3;
+#endif
+    printf("axis = %d\n", axis);
     auto comparator = (axis == 0) ? box_x_compare : (axis == 1) ? box_y_compare : box_z_compare;
 
     size_t object_span = end - start;
@@ -93,7 +125,7 @@ HOST bvh_node::bvh_node(
 #ifndef USE_CUDA
         std::sort(objects.begin() + start, objects.begin() + end, comparator);
 #else
-        std::sort(objects + start, objects + end, comparator);
+        dev_sort((const hittable **)(objects + start), (const hittable **)(objects + end), comparator);
 #endif
         auto mid = start + object_span / 2;
 #ifndef USE_CUDA
@@ -108,8 +140,9 @@ HOST bvh_node::bvh_node(
 
     aabb box_left, box_right;
 
-    if (!left->bounding_box(time0, time1, box_left) || !right->bounding_box(time0, time1, box_right))
-        std::cerr << "No bounding box in bvh_node constructor.\n";
+    if (!left->bounding_box(time0, time1, box_left) || !right->bounding_box(time0, time1, box_right)) {
+        printf("ERROR: No bounding box in bvh_node constructor.\n");
+    }
 
     box = surrounding_box(box_left, box_right);
 }
