@@ -56,3 +56,11 @@ But, it does point out mem management could be done by "world" owner
 Let's do a couple things...
 1) make all input state (all but fb) part of a class and send that to render
 2) do copy-construct trick to materials
+
+# 5/8/2022
+
+Looking closer at the above, it is quite invasive and changes the "simple" c++ way we allocate memory.  
+It seems like I would need to make some sort of memory-allocation system that could be better &
+more efficient, but still quite a dramatic change to the rest of the program.
+
+Instead, let's revisit trying to implement what was host-only as both host & device.  
