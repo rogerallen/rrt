@@ -56,3 +56,42 @@ $ rm -f scenes/finalo.png && time make scenes/finalo.png
 stats:OpenMP,1200,800,10,12,n/a,n/a,4.3835
 $ rm -f scenes/finalc.png && time make scenes/finalc.png
 stats:SingleThread,1200,800,10,1,n/a,n/a,7.38456
+
+5/8/2022 - on "rainbow" trying to track down apparent perf regression
+-----------------------------------------------------------------------------------------
+[on a rrt_test branch]
+> git checkout add_gpu_bvh
+
+> git log --oneline -n 10
+8ab3859 (HEAD -> add_gpu_bvh, origin/add_gpu_bvh) bvh seems to work.
+b1dfe9f (origin/main, origin/HEAD, main) adding bvh & still debugging
+7680be4 better capture what this file is
+fcadd63 clean up print()s
+9a34c3f usage and parsing match up
+3165e45 start bvh on gpu journey
+7ed7c91 little cleanup
+13dcd49 update rainbow perf
+0df0f3d add BVH to C++ path
+2a31c98 omp report max threads
+
+git checkout 2a31c98 (few days ago, not so different than 5/1/2022)
+> ./rrtd -s 50 -tx 8 -ty 8 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50d.png
+stats:11060,1280,720,50,14651,8,8,13.8722
+> ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png 
+stats:11060,1280,720,50,1442,1024,1,15.5878
+
+HEAD: (no bvh)  okay, this isn't so different
+> ./rrtd -s 50 -tx 8 -ty 8 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50d.png -b 
+stats:11060,1280,720,50,14651,8,8,13.6451
+stats:11060,1280,720,50,14651,8,8,13.4751
+> ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png -b
+stats:11060,1280,720,50,1442,1024,1,19.9955
+stats:11060,1280,720,50,1442,1024,1,14.0894
+
+HEAD: (with bvh) okay, this is bad
+> ./rrtd -s 50 -tx 8 -ty 8 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50d.png
+stats:11060,1280,720,50,14651,8,8,31.8631
+stats:11060,1280,720,50,14651,8,8,31.962
+> ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
+stats:11060,1280,720,50,1442,1024,1,25.1794
+stats:11060,1280,720,50,1442,1024,1,25.7471
