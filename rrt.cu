@@ -92,7 +92,7 @@ cuda_render(vec3 *fb, int image_width, int image_height, int samples_per_pixel, 
     curandState local_rand_state = d_rand_state[pixel_index];
     bool debug = false;
 #if 0
-    if ((i == 600) && (j == 400)) {
+    if ((i == 0) && (j == 0)) {
         printf("DEBUG ij %d %d\n", i, j);
         debug = true;
     }
@@ -157,8 +157,8 @@ __global__ void create_world(hittable **d_world, camera *d_scene_camera, camera 
         *d_world = d_hittable_list;
 
         if (bvh) {
-            auto world_bvh = new bvh_node(d_hittable_list, (*d_camera)->t0(), (*d_camera)->t1());
-            if (1) world_bvh->print(0);
+            auto world_bvh = new bvh_node(*d_hittable_list, (*d_camera)->t0(), (*d_camera)->t1());
+            if (0) world_bvh->print(0);
             *d_world = world_bvh;
         }
     }
@@ -247,11 +247,17 @@ vec3 *Rrt::render(scene *the_scene)
     int num_hittables = num_instance_triangles + num_spheres + num_moving_spheres;
     std::cerr << "num_hittables = " << num_hittables << "\n";
 
+    if (bvh) {
+        checkCudaErrors(cudaDeviceSetLimit(cudaLimitStackSize, 8192));
+    }
     create_world<<<1, 1>>>(d_world, d_scene_camera, d_camera, num_materials, d_scene_materials, d_materials,
                            num_spheres, d_scene_spheres, num_moving_spheres, d_scene_moving_spheres,
                            num_instance_triangles, d_instance_triangles, aspect_ratio, bvh);
     checkCudaErrors(cudaGetLastError());
     checkCudaErrors(cudaDeviceSynchronize());
+    if (bvh) {
+        checkCudaErrors(cudaDeviceSetLimit(cudaLimitStackSize, 2048)); // still seems to need some stack
+    }
 
     // FIXME add bvh here, someday.  Can't do this yet.
 

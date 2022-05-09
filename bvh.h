@@ -21,6 +21,7 @@ class bvh_node : public hittable {
 #endif
                    time0, time1)
     {
+        // printf("bvh_node entry &list,t0,t1\n");
     }
 
     DEV bvh_node(
@@ -85,17 +86,21 @@ DEV bvh_node::bvh_node(
 #endif
     size_t start, size_t end, FP_T time0, FP_T time1)
 {
-    printf("bvh_node entry\n");
-    // Create a modifiable array of the source scene objects
+    // printf("bvh_node %ld %ld\n", start, end);
+    //  Create a modifiable array of the source scene objects
+    //  FIXME -- this copies ALL of the objects.  Not just start...end.
 #ifndef USE_CUDA
     auto objects = src_objects;
 #else
-    hittable **objects = new hittable *[end - start + 1];
-    for (int i = start; i < end; i++) {
+    // this creates an array that is larger than necessary,
+    // but matches C++ code for the rest of the method.
+    hittable **objects = new hittable *[end + 1];
+    // just copy the stuff from start..end
+    for (int i = start; i < end + 1; i++) {
         objects[i] = *(src_objects + i);
     }
 #endif
-    printf("copied\n");
+
 #ifndef USE_CUDA
     int axis = random_int(0, 2);
 #else
@@ -103,7 +108,7 @@ DEV bvh_node::bvh_node(
     static int axis = 0;
     axis = (axis + 1) % 3;
 #endif
-    printf("axis = %d\n", axis);
+
     auto comparator = (axis == 0) ? box_x_compare : (axis == 1) ? box_y_compare : box_z_compare;
 
     size_t object_span = end - start;
@@ -138,6 +143,10 @@ DEV bvh_node::bvh_node(
 #endif
     }
 
+#ifdef USE_CUDA
+    delete[] objects;
+#endif
+
     aabb box_left, box_right;
 
     if (!left->bounding_box(time0, time1, box_left) || !right->bounding_box(time0, time1, box_right)) {
@@ -145,6 +154,8 @@ DEV bvh_node::bvh_node(
     }
 
     box = surrounding_box(box_left, box_right);
+
+    // printf("bvh_node %ld %ld EXIT\n", start, end);
 }
 
 HOSTDEV bool bvh_node::bounding_box(FP_T time0, FP_T time1, aabb &output_box) const
