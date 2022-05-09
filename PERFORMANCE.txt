@@ -57,7 +57,7 @@ stats:OpenMP,1200,800,10,12,n/a,n/a,4.3835
 $ rm -f scenes/finalc.png && time make scenes/finalc.png
 stats:SingleThread,1200,800,10,1,n/a,n/a,7.38456
 
-5/8/2022 - on "rainbow" trying to track down apparent perf regression
+5/8/2022 - on "rainbow" trying to track down apparent perf regression after adding BVH
 -----------------------------------------------------------------------------------------
 [on a rrt_test branch]
 > git checkout add_gpu_bvh
@@ -95,3 +95,23 @@ stats:11060,1280,720,50,14651,8,8,31.962
 > ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
 stats:11060,1280,720,50,1442,1024,1,25.1794
 stats:11060,1280,720,50,1442,1024,1,25.7471
+
+5/8/2022 - on "gyre" any perf regression?
+-----------------------------------------------------------------------------------------
+HEAD: (no bvh)  this is a pretty big regression from 5/1 (was 9s & 8s, respectively)
+> ./rrtd -s 50 -tx 8 -ty 8 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50d.png -b 
+stats:11050,1280,720,50,14651,8,8,19.2266
+stats:11050,1280,720,50,14651,8,8,17.1748
+> ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png -b
+stats:11050,1280,720,50,1442,1024,1,13.6871
+stats:11050,1280,720,50,1442,1024,1,13.0145
+
+HEAD: (with bvh) big improvement with single-precision.  Double, not so much.
+$ ./rrtd -s 50 -tx 8 -ty 8 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50d.png 
+stats:11050,1280,720,50,14651,8,8,16.0291
+stats:11050,1280,720,50,14651,8,8,16.3759
+$ ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
+stats:11050,1280,720,50,1442,1024,1,7.28716
+stats:11050,1280,720,50,1442,1024,1,7.00725
+
+In short, perf is all kray-kray!  Need to investigate further.
