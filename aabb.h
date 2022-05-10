@@ -16,7 +16,9 @@ class aabb {
     HOSTDEV point3 max() const { return maximum; }
 
     HOSTDEV inline bool hit(const ray &r, FP_T t_min, FP_T t_max) const
-    { // Andrew Kensler variant
+    {
+#if 0
+        // Andrew Kensler variant
         for (int a = 0; a < 3; a++) {
             auto invD = 1.0f / r.direction()[a];
             auto t0 = (min()[a] - r.origin()[a]) * invD;
@@ -34,6 +36,58 @@ class aabb {
             t_max = t1 < t_max ? t1 : t_max;
             if (t_max <= t_min) return false;
         }
+#else
+        // rallen-Manually unrolled a=0,1,2 since this was
+        // a hotspot in nsight-compute
+        auto invD = 1.0f / r.direction()[0];
+        auto t0 = (min()[0] - r.origin()[0]) * invD;
+        auto t1 = (max()[0] - r.origin()[0]) * invD;
+        if (invD < 0.0f) {
+#ifndef USE_CUDA
+            std::swap(t0, t1);
+#else
+            auto tmp = t0;
+            t0 = t1;
+            t1 = tmp;
+#endif
+        }
+        t_min = t0 > t_min ? t0 : t_min;
+        t_max = t1 < t_max ? t1 : t_max;
+        if (t_max <= t_min) return false;
+        // a = 1
+        invD = 1.0f / r.direction()[1];
+        t0 = (min()[1] - r.origin()[1]) * invD;
+        t1 = (max()[1] - r.origin()[1]) * invD;
+        if (invD < 0.0f) {
+#ifndef USE_CUDA
+            std::swap(t0, t1);
+#else
+            auto tmp = t0;
+            t0 = t1;
+            t1 = tmp;
+#endif
+        }
+        t_min = t0 > t_min ? t0 : t_min;
+        t_max = t1 < t_max ? t1 : t_max;
+        if (t_max <= t_min) return false;
+        // a = 2
+        invD = 1.0f / r.direction()[2];
+        t0 = (min()[2] - r.origin()[2]) * invD;
+        t1 = (max()[2] - r.origin()[2]) * invD;
+        if (invD < 0.0f) {
+#ifndef USE_CUDA
+            std::swap(t0, t1);
+#else
+            auto tmp = t0;
+            t0 = t1;
+            t1 = tmp;
+#endif
+        }
+        t_min = t0 > t_min ? t0 : t_min;
+        t_max = t1 < t_max ? t1 : t_max;
+        if (t_max <= t_min) return false;
+
+#endif
         return true;
     }
     HOSTDEV void print(int i) const

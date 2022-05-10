@@ -96,6 +96,14 @@ stats:11060,1280,720,50,14651,8,8,31.962
 stats:11060,1280,720,50,1442,1024,1,25.1794
 stats:11060,1280,720,50,1442,1024,1,25.7471
 
+Scene for running nsight on...
+> ./rrt -s 20 -tx 640 -ty 1 -w 640 -h 480 -i scenes/test2.txt -o scenes/test2.png -b
+stats:11060,640,480,20,962,640,1,0.239689
+> ./rrt -s 20 -tx 640 -ty 1 -w 640 -h 480 -i scenes/test2.txt -o scenes/test2.png 
+stats:11060,640,480,20,962,640,1,0.715616
+
+(had to reduce to 320 for "detailed" bvh)
+
 5/8/2022 - on "gyre" any perf regression?
 -----------------------------------------------------------------------------------------
 HEAD: (no bvh)  this is a pretty big regression from 5/1 (was 9s & 8s, respectively)
@@ -115,3 +123,24 @@ stats:11050,1280,720,50,1442,1024,1,7.28716
 stats:11050,1280,720,50,1442,1024,1,7.00725
 
 In short, perf is all kray-kray!  Need to investigate further.
+
+5/9/2022 - on "rainbow" 
+-----------------------------------------------------------------------------------------
+Wow, unrolling the loop in aabb.h hit() helped considerably (-10s & -5s!)
+> ./rrtd -s 50 -tx 8 -ty 8 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50d.png 
+stats:11060,1280,720,50,14651,8,8,20.5649
+stats:11060,1280,720,50,14651,8,8,20.3974
+
+stats:11060,1280,720,50,14651,8,8,27.5419  tried to move loads up high.  Bad idea.
+stats:11060,1280,720,50,14651,8,8,28.1274
+
+stats:11060,1280,720,50,14651,8,8,19.5171  reverted
+
+> ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
+stats:11060,1280,720,50,1442,1024,1,20.4815
+stats:11060,1280,720,50,1442,1024,1,20.7204
+
+stats:11060,1280,720,50,1442,1024,1,21.8221 tried to move loads up high.  Bad idea.
+stats:11060,1280,720,50,1442,1024,1,22.5833
+
+stats:11060,1280,720,50,1442,1024,1,17.3111 reverted (wow!)

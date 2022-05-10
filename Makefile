@@ -57,7 +57,7 @@ rrto: $(SRCSC) $(INCS)
 	
 # some hints on running nsight systems & nsight compute
 # default run args for profiling
-RUNARGS ?= -s 1 -i scenes/test1.txt -w 640 -h 480 -o scenes/test1.png
+RUNARGS ?= -s 20 -tx 640 -ty 1 -w 640 -h 480 -i scenes/test2.txt -o scenes/test2.png
 
 # to figure out the right device, if not 0 run this:
 #   nsys profile --gpu-metrics-device=help
