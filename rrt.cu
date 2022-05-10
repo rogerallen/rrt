@@ -8,7 +8,14 @@
 #include "sphere.h"
 #include "triangle.h"
 
+#include <ctime>
+#include <iomanip>
 #include <iostream>
+#include <limits.h>
+#include <unistd.h>
+
+#define Q(x) #x
+#define QUOTE(x) Q(x)
 
 #ifdef COMPILING_FOR_WSL
 #define SUPPORTS_CUDA_MEM_PREFETCH_ASYNC 0
@@ -176,6 +183,10 @@ __global__ void free_world(int num_materials, material **d_materials, int num_sp
 
 vec3 *Rrt::render(scene *the_scene)
 {
+
+    std::time_t render_time = std::time(nullptr);
+    std::tm render_tm = *std::localtime(&render_time);
+
     int num_blocks_x = image_width / num_threads_x + 1;
     int num_blocks_y = image_height / num_threads_y + 1;
 
@@ -288,8 +299,12 @@ vec3 *Rrt::render(scene *the_scene)
     double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
     std::cerr << "took " << timer_seconds << " seconds.\n";
 
-    std::cerr << "stats:" << cuda_runtime_version << "," << image_width << "," << image_height << ","
-              << samples_per_pixel << "," << (num_blocks_x * num_blocks_y) << "," << num_threads_x << ","
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+
+    std::cerr << "stats," << std::put_time(&render_tm, "%c %Z,") << std::string(hostname) << ","
+              << "CUDA" << cuda_runtime_version << "," << QUOTE(FP_T) << "," << image_width << "," << image_height
+              << "," << samples_per_pixel << "," << (num_blocks_x * num_blocks_y) << "," << num_threads_x << ","
               << num_threads_y << "," << timer_seconds << "\n";
 
 #if SUPPORTS_CUDA_MEM_PREFETCH_ASYNC == 1

@@ -8,10 +8,17 @@
 #include "sphere.h"
 #include "triangle.h"
 
+#include <ctime>
+#include <iomanip>
 #include <iostream>
+#include <limits.h>
+#include <unistd.h>
 #include <vector>
 
 #include <omp.h>
+
+#define Q(x) #x
+#define QUOTE(x) Q(x)
 
 color ray_color(const ray &r, const hittable *world, int depth, bool debug)
 {
@@ -90,6 +97,9 @@ hittable *create_world(scene *the_scene, bool bvh)
 vec3 *Rrt::render(scene *the_scene)
 {
 
+    std::time_t render_time = std::time(nullptr);
+    std::tm render_tm = *std::localtime(&render_time);
+
     std::cerr << "Rendering a " << image_width << "x" << image_height << " image with " << samples_per_pixel
               << " samples per pixel\n";
 
@@ -157,7 +167,11 @@ vec3 *Rrt::render(scene *the_scene)
     std::string num_threads = std::to_string(omp_get_max_threads());
 #endif
 
-    std::cerr << "stats:" << cpu_version << "," << image_width << "," << image_height << "," << samples_per_pixel << ","
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+
+    std::cerr << "stats," << std::put_time(&render_tm, "%c %Z,") << std::string(hostname) << "," << cpu_version << ","
+              << QUOTE(FP_T) << "," << image_width << "," << image_height << "," << samples_per_pixel << ","
               << num_threads << ","
               << "n/a,n/a," << timer_seconds << "\n";
 
