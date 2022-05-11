@@ -208,7 +208,7 @@ vec3 *Rrt::render(scene *the_scene)
 
     // allocate random state
     curandState *d_rand_state;
-    checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * samples_per_pixel * sizeof(curandState)));
+    checkCudaErrors(cudaMalloc((void **)&d_rand_state, num_pixels * sizeof(curandState)));
 
     // make our world of hittables & the camera
     // create & populate scene data that create_world with use to make the scene.
