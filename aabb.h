@@ -18,7 +18,8 @@ class aabb {
     HOSTDEV inline bool hit(const ray &r, FP_T t_min, FP_T t_max) const
     {
 #if 0
-        // Andrew Kensler variant
+// Andrew Kensler variant.  Unroll does not help
+#pragma unroll 3
         for (int a = 0; a < 3; a++) {
             auto invD = 1.0f / r.direction()[a];
             auto t0 = (min()[a] - r.origin()[a]) * invD;

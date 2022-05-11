@@ -153,3 +153,19 @@ stats:11050,1280,720,50,14651,8,8,15.9757
 $ ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
 stats:11050,1280,720,50,1442,1024,1,5.21927 (wow!)
 stats:11050,1280,720,50,1442,1024,1,5.18269
+
+5/10/2022 - manual vs #pragma unroll that aabb.h hit() loop
+-----------------------------------------------------------------------------------------
+> ./rrtd -s 50 -tx 8 -ty 8 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50d.png 
+stats,Tue May 10 08:29:12 2022 PDT,rainbow,CUDA11060,double,1280,720,50,14651,8,8,27.6707    #pragma
+stats,Tue May 10 08:30:05 2022 PDT,rainbow,CUDA11060,double,1280,720,50,14651,8,8,27.6165
+
+stats,Tue May 10 08:32:38 2022 PDT,rainbow,CUDA11060,double,1280,720,50,14651,8,8,20.1212    manual
+
+> ./rrt -s 50 -tx 1024 -ty 1 -w 1280 -h 720 -i scenes/final.txt -o scenes/final_s50.png
+stats,Tue May 10 08:29:40 2022 PDT,rainbow,CUDA11060,float,1280,720,50,1442,1024,1,21.8077   #pragma
+stats,Tue May 10 08:30:34 2022 PDT,rainbow,CUDA11060,float,1280,720,50,1442,1024,1,21.7992
+
+stats,Tue May 10 08:32:59 2022 PDT,rainbow,CUDA11060,float,1280,720,50,1442,1024,1,17.1267   manual
+
+Hmm, manual does way better.
