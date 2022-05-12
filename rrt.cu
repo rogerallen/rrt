@@ -12,12 +12,14 @@
 #include <iomanip>
 #include <iostream>
 #include <limits.h>
+#ifdef __linux__
 #include <unistd.h>
+#endif
 
 #define Q(x) #x
 #define QUOTE(x) Q(x)
 
-#ifdef COMPILING_FOR_WSL
+#if defined(COMPILING_FOR_WSL) || defined(WIN32)
 #define SUPPORTS_CUDA_MEM_PREFETCH_ASYNC 0
 #else
 #define SUPPORTS_CUDA_MEM_PREFETCH_ASYNC 1
@@ -299,8 +301,13 @@ vec3 *Rrt::render(scene *the_scene)
     double timer_seconds = ((double)(stop - start)) / CLOCKS_PER_SEC;
     std::cerr << "took " << timer_seconds << " seconds.\n";
 
+#ifdef __linux__
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
+#endif
+#ifdef WIN32
+    char hostname[] = "n/a";
+#endif
 
     std::cerr << "stats," << std::put_time(&render_tm, "%c %Z,") << std::string(hostname) << ","
               << "CUDA" << cuda_runtime_version << "," << QUOTE(FP_T) << "," << image_width << "," << image_height

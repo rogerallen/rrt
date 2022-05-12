@@ -78,7 +78,7 @@ struct scene_obj {
     void add_vertex(vec3 v)
     {
         if (cur_vertex_idx == num_vertices) {
-            std::string("ERROR: only expected " + std::to_string(num_vertices) + " vertices.");
+            std::cerr << std::string("ERROR: only expected " + std::to_string(num_vertices) + " vertices.");
             std::exit(1);
         }
         vertices[cur_vertex_idx++] = v;
@@ -86,7 +86,7 @@ struct scene_obj {
     void add_triangle(int i, int j, int k)
     {
         if (cur_triangle_idx == num_triangles) {
-            std::string("ERROR: only expected " + std::to_string(num_triangles) + " triangles.");
+            std::cerr << std::string("ERROR: only expected " + std::to_string(num_triangles) + " triangles.");
             std::exit(1);
         }
         scene_triangle t = scene_triangle(i, j, k);
@@ -95,12 +95,12 @@ struct scene_obj {
     void finish()
     {
         if (cur_vertex_idx != num_vertices) {
-            std::string("ERROR: expected " + std::to_string(num_vertices) + " vertices, got " +
+            std::cerr << std::string("ERROR: expected " + std::to_string(num_vertices) + " vertices, got " +
                         std::to_string(cur_vertex_idx) + ".");
             std::exit(1);
         }
         if (cur_triangle_idx != num_triangles) {
-            std::string("ERROR: expected " + std::to_string(num_triangles) + " triangles, got " +
+            std::cerr << std::string("ERROR: expected " + std::to_string(num_triangles) + " triangles, got " +
                         std::to_string(cur_triangle_idx) + ".");
             std::exit(1);
         }
@@ -135,7 +135,7 @@ class xf_rotate : public xform {
     // https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
     virtual vec3 transform(vec3 v)
     {
-        double theta = angle * (M_PI / 180);
+        double theta = angle * (pi / 180);
         double cos_theta = cos(theta);
         double sin_theta = sin(theta);
         vec3 rotated = (v * cos_theta) + (cross(axis, v) * sin_theta) + (axis * dot(axis, v)) * (1 - cos_theta);

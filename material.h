@@ -80,7 +80,7 @@ class dielectric : public material {
         FP_T refraction_ratio = rec.front_face ? (1.0 / ir) : ir;
 
         vec3 unit_direction = unit_vector(r_in.direction());
-        FP_T cos_theta = fmin(dot(-unit_direction, rec.normal), 1.0);
+        FP_T cos_theta = fmin(dot(-unit_direction, rec.normal), (FP_T)1.0);
         FP_T sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
         bool cannot_refract = refraction_ratio * sin_theta > 1.0;

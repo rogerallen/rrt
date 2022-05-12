@@ -42,7 +42,11 @@ using std::sqrt;
 
 // Constants
 
-const FP_T infinity = std::numeric_limits<double>::infinity();
+#ifdef WIN32
+#define infinity INFINITY
+#else
+const FP_T infinity = std::numeric_limits<FP_T>::infinity();
+#endif
 const FP_T pi = 3.1415926535897932385;
 
 // Utility Functions

@@ -1,8 +1,12 @@
-.vscode/
-rrt
-rrtc
-rrtd
-rrto
+/.vscode
+.vs/
+*.user
+x64/
+/rrt
+/rrtc
+/rrtd
+/rrto
+/scenes/*/*.txt
 *.ppm
 *.png
 *.log
@@ -11,7 +15,6 @@ rrto
 *.ncu-occ
 *.ncu-proj
 *.sqlite
-scenes/*/*.txt
 *.list
 *.mp4
 *.log.mbtree
