@@ -219,21 +219,21 @@ vec3 *Rrt::render(scene *the_scene)
     *d_scene_camera = *(the_scene->cam);
 
     scene_material *d_scene_materials;
-    int num_materials = the_scene->materials.size();
+    int num_materials = (int)(the_scene->materials.size());
     checkCudaErrors(cudaMallocManaged((void **)&d_scene_materials, num_materials * sizeof(scene_material)));
     for (int i = 0; i < num_materials; ++i) {
         d_scene_materials[i] = *(the_scene->materials[i]);
     }
 
     scene_sphere *d_scene_spheres;
-    int num_spheres = the_scene->spheres.size();
+    int num_spheres = (int)(the_scene->spheres.size());
     checkCudaErrors(cudaMallocManaged((void **)&d_scene_spheres, num_spheres * sizeof(scene_sphere)));
     for (int i = 0; i < num_spheres; ++i) {
         d_scene_spheres[i] = *(the_scene->spheres[i]);
     }
 
     scene_moving_sphere *d_scene_moving_spheres;
-    int num_moving_spheres = the_scene->moving_spheres.size();
+    int num_moving_spheres = (int)(the_scene->moving_spheres.size());
     checkCudaErrors(
         cudaMallocManaged((void **)&d_scene_moving_spheres, num_moving_spheres * sizeof(scene_moving_sphere)));
     for (int i = 0; i < num_moving_spheres; ++i) {
@@ -241,7 +241,7 @@ vec3 *Rrt::render(scene *the_scene)
     }
 
     scene_instance_triangle *d_instance_triangles;
-    int num_instance_triangles = the_scene->num_triangles();
+    int num_instance_triangles = (int)(the_scene->num_triangles());
     checkCudaErrors(
         cudaMallocManaged((void **)&d_instance_triangles, num_instance_triangles * sizeof(scene_instance_triangle)));
     the_scene->fill_instance_triangles(d_instance_triangles);

@@ -14,12 +14,18 @@ using std::sqrt;
 
 // CUDA hackery
 
-// set this via -DFP_T=double
-//#ifndef USE_FLOAT_NOT_DOUBLE
-//#define FP_T double
-//#else
-//#define FP_T float
-//#endif
+// set USE_FLOAT to set float precision to float instead of double
+// this is nuts.  Windows preprocessor cannot do the following.  WTF?
+// #if FP_T == float
+#ifdef USE_FLOAT
+#define FP_T float
+#define POW powf
+#define SQRT sqrtf
+#else
+#define FP_T double
+#define POW pow
+#define SQRT sqrt
+#endif
 
 #ifndef USE_CUDA
 #define HOST
@@ -47,11 +53,11 @@ using std::sqrt;
 #else
 const FP_T infinity = std::numeric_limits<FP_T>::infinity();
 #endif
-const FP_T pi = 3.1415926535897932385;
+const FP_T pi = (FP_T)3.1415926535897932385;
 
 // Utility Functions
 
-HOSTDEV inline FP_T degrees_to_radians(FP_T degrees) { return degrees * pi / 180.0; }
+HOSTDEV inline FP_T degrees_to_radians(FP_T degrees) { return degrees * pi / (FP_T)180.0; }
 
 // we handle this via other means when using CUDA
 //#ifndef USE_CUDA
@@ -69,7 +75,7 @@ inline FP_T random_uniform(FP_T min, FP_T max)
 inline int random_int(int min, int max)
 {
     // Returns a random integer in [min,max].
-    return static_cast<int>(random_uniform(min, max + 1));
+    return static_cast<int>(random_uniform((FP_T)min, (FP_T)(max + 1)));
 }
 #ifdef USE_CUDA
 DEV inline FP_T random_uniform(curandState *state) { return curand_uniform(state); }
@@ -80,7 +86,7 @@ DEV inline FP_T random_uniform(curandState *state, FP_T min, FP_T max)
 DEV inline int random_int(curandState *state, int min, int max)
 {
     // Returns a random integer in [min,max].
-    return static_cast<int>(random_uniform(state, min, max + 1));
+    return static_cast<int>(random_uniform(state, (FP_T)min, (FP_T)(max + 1)));
 }
 #endif
 

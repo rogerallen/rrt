@@ -131,14 +131,14 @@ class xf_rotate : public xform {
     vec3 axis;
 
   public:
-    xf_rotate(double a, vec3 v) : angle(a), axis(v) {}
+    xf_rotate(FP_T a, vec3 v) : angle(a), axis(v) {}
     // https://en.wikipedia.org/wiki/Rodrigues%27_rotation_formula
     virtual vec3 transform(vec3 v)
     {
-        double theta = angle * (pi / 180);
-        double cos_theta = cos(theta);
-        double sin_theta = sin(theta);
-        vec3 rotated = (v * cos_theta) + (cross(axis, v) * sin_theta) + (axis * dot(axis, v)) * (1 - cos_theta);
+        FP_T theta = (FP_T)(angle * (pi / 180));
+        FP_T cos_theta = cos(theta);
+        FP_T sin_theta = sin(theta);
+        vec3 rotated = (v * cos_theta) + (cross(axis, v) * sin_theta) + (axis * dot(axis, v)) * ((FP_T)1 - cos_theta);
         return rotated;
     }
 };
@@ -177,7 +177,7 @@ struct scene_obj_inst {
     }
     void add_translate(vec3 v) { transforms.push_back(new xf_translation(v)); }
     void add_scale(vec3 v) { transforms.push_back(new xf_scale(v)); }
-    void add_rotate(double angle, vec3 v) { transforms.push_back(new xf_rotate(angle, v)); }
+    void add_rotate(FP_T angle, vec3 v) { transforms.push_back(new xf_rotate(angle, v)); }
 };
 
 enum scene_material_t { LAMBERTIAN = 0, METAL, DIELECTRIC };
@@ -234,14 +234,14 @@ class scene {
                 }
                 double time0 = 0.0, time1 = 0.0;
                 int cur_idx = 1; // skip camera
-                vec3 lookfrom =
-                    vec3(std::stod(words[cur_idx]), std::stod(words[cur_idx + 1]), std::stod(words[cur_idx + 2]));
+                vec3 lookfrom = vec3((FP_T)std::stod(words[cur_idx]), (FP_T)std::stod(words[cur_idx + 1]),
+                                     (FP_T)std::stod(words[cur_idx + 2]));
                 cur_idx += 3;
-                vec3 lookat =
-                    vec3(std::stod(words[cur_idx]), std::stod(words[cur_idx + 1]), std::stod(words[cur_idx + 2]));
+                vec3 lookat = vec3((FP_T)std::stod(words[cur_idx]), (FP_T)std::stod(words[cur_idx + 1]),
+                                   (FP_T)std::stod(words[cur_idx + 2]));
                 cur_idx += 3;
-                vec3 vup =
-                    vec3(std::stod(words[cur_idx]), std::stod(words[cur_idx + 1]), std::stod(words[cur_idx + 2]));
+                vec3 vup = vec3((FP_T)std::stod(words[cur_idx]), (FP_T)std::stod(words[cur_idx + 1]),
+                                (FP_T)std::stod(words[cur_idx + 2]));
                 cur_idx += 3;
                 double vfov = std::stod(words[cur_idx++]);
                 double aperture = std::stod(words[cur_idx++]);
@@ -251,8 +251,9 @@ class scene {
                     time0 = std::stod(words[cur_idx++]);
                     time1 = std::stod(words[cur_idx++]);
                 }
-                FP_T aspect_ratio = FP_T(image_width) / image_height;
-                cam = new camera(lookfrom, lookat, vup, vfov, aspect_ratio, aperture, focus, time0, time1);
+                double aspect_ratio = double(image_width) / image_height;
+                cam = new camera(lookfrom, lookat, vup, (FP_T)vfov, (FP_T)aspect_ratio, (FP_T)aperture, (FP_T)focus,
+                                 (FP_T)time0, (FP_T)time1);
             }
             else if (line.find("material") == 0) {
                 scene_material *new_material = new scene_material;
@@ -265,27 +266,29 @@ class scene {
                     std::string r_str, g_str, b_str;
                     iss >> r_str >> g_str >> b_str;
                     new_material->type = LAMBERTIAN;
-                    new_material->mat.lambertian.albedo = vec3(std::stod(r_str), std::stod(g_str), std::stod(b_str));
+                    new_material->mat.lambertian.albedo =
+                        vec3((FP_T)std::stod(r_str), (FP_T)std::stod(g_str), (FP_T)std::stod(b_str));
                 }
                 else if (type_str == "metal") {
                     std::string r_str, g_str, b_str, f_str;
                     iss >> r_str >> g_str >> b_str;
                     iss >> f_str;
                     new_material->type = METAL;
-                    new_material->mat.metal.albedo = vec3(std::stod(r_str), std::stod(g_str), std::stod(b_str));
+                    new_material->mat.metal.albedo =
+                        vec3((FP_T)std::stod(r_str), (FP_T)std::stod(g_str), (FP_T)std::stod(b_str));
                     new_material->mat.metal.fuzz = std::stod(f_str);
                 }
                 else if (type_str == "dielectric") {
                     std::string r_str;
                     iss >> r_str;
                     new_material->type = DIELECTRIC;
-                    new_material->mat.dielectric.ref_idx = std::stod(r_str);
+                    new_material->mat.dielectric.ref_idx = (FP_T)std::stod(r_str);
                 }
                 else {
                     std::cerr << "ERROR: unknown material type: " << type_str << std::endl;
                     exit(3);
                 }
-                int next_idx = materials.size();
+                int next_idx = (int)(materials.size());
                 materials.push_back(new_material);
                 material_names_to_idx.insert(std::pair<std::string, int>(name_str, next_idx));
             }
@@ -302,8 +305,8 @@ class scene {
 
                 scene_sphere *new_sphere = new scene_sphere;
 
-                new_sphere->center = vec3(std::stod(cx_str), std::stod(cy_str), std::stod(cz_str));
-                new_sphere->radius = std::stod(r_str);
+                new_sphere->center = vec3((FP_T)std::stod(cx_str), (FP_T)std::stod(cy_str), (FP_T)std::stod(cz_str));
+                new_sphere->radius = (FP_T)std::stod(r_str);
                 new_sphere->material_idx = material_names_to_idx[mat_str];
                 spheres.push_back(new_sphere);
             }
@@ -324,8 +327,10 @@ class scene {
 
                 scene_moving_sphere *new_moving_sphere = new scene_moving_sphere;
 
-                new_moving_sphere->center0 = vec3(std::stod(c0x_str), std::stod(c0y_str), std::stod(c0z_str));
-                new_moving_sphere->center1 = vec3(std::stod(c1x_str), std::stod(c1y_str), std::stod(c1z_str));
+                new_moving_sphere->center0 =
+                    vec3((FP_T)std::stod(c0x_str), (FP_T)std::stod(c0y_str), (FP_T)std::stod(c0z_str));
+                new_moving_sphere->center1 =
+                    vec3((FP_T)std::stod(c1x_str), (FP_T)std::stod(c1y_str), (FP_T)std::stod(c1z_str));
                 new_moving_sphere->time0 = std::stod(t0_str);
                 new_moving_sphere->time1 = std::stod(t1_str);
                 new_moving_sphere->radius = std::stod(r_str);
@@ -355,7 +360,7 @@ class scene {
                 std::string x_str, y_str, z_str;
                 iss >> obj_str;
                 iss >> x_str >> y_str >> z_str;
-                new_obj->add_vertex(vec3(std::stod(x_str), std::stod(y_str), std::stod(z_str)));
+                new_obj->add_vertex(vec3((FP_T)std::stod(x_str), (FP_T)std::stod(y_str), (FP_T)std::stod(z_str)));
             }
             else if (line.find("obj_tri") == 0) {
                 if (!adding_obj) {
@@ -394,20 +399,22 @@ class scene {
                     // words has an extra "blank" at the end
                     while (cur_idx < words.size() - 1) {
                         if (words[cur_idx][0] == 't') {
-                            new_obj_inst->add_translate(vec3(std::stod(words[cur_idx + 1]),
-                                                             std::stod(words[cur_idx + 2]),
-                                                             std::stod(words[cur_idx + 3])));
+                            new_obj_inst->add_translate(vec3((FP_T)std::stod(words[cur_idx + 1]),
+                                                             (FP_T)std::stod(words[cur_idx + 2]),
+                                                             (FP_T)std::stod(words[cur_idx + 3])));
                             cur_idx += 4;
                         }
                         else if (words[cur_idx][0] == 's') {
-                            new_obj_inst->add_scale(vec3(std::stod(words[cur_idx + 1]), std::stod(words[cur_idx + 2]),
-                                                         std::stod(words[cur_idx + 3])));
+                            new_obj_inst->add_scale(vec3((FP_T)std::stod(words[cur_idx + 1]),
+                                                         (FP_T)std::stod(words[cur_idx + 2]),
+                                                         (FP_T)std::stod(words[cur_idx + 3])));
                             cur_idx += 4;
                         }
                         else if (words[cur_idx][0] == 'r') {
-                            new_obj_inst->add_rotate(std::stod(words[cur_idx + 1]),
-                                                     vec3(std::stod(words[cur_idx + 2]), std::stod(words[cur_idx + 3]),
-                                                          std::stod(words[cur_idx + 4])));
+                            new_obj_inst->add_rotate((FP_T)std::stod(words[cur_idx + 1]),
+                                                     vec3((FP_T)std::stod(words[cur_idx + 2]),
+                                                          (FP_T)std::stod(words[cur_idx + 3]),
+                                                          (FP_T)std::stod(words[cur_idx + 4])));
                             cur_idx += 5;
                         }
                     }

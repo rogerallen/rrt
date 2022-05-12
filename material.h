@@ -45,7 +45,7 @@ class lambertian : public material {
 
 class metal : public material {
   public:
-    HOSTDEV metal(const color &a, FP_T f) : albedo(a), fuzz(f < 1 ? f : 1) {}
+    HOSTDEV metal(const color &a, FP_T f) : albedo(a), fuzz(f < (FP_T)1.0 ? f : (FP_T)1.0) {}
 
     DEV virtual bool scatter(CURAND_STATE_DEF_COMMA const ray &r_in, const hit_record &rec, color &attenuation,
                              ray &scattered, bool debug) const override
@@ -77,11 +77,11 @@ class dielectric : public material {
                              ray &scattered, bool debug) const override
     {
         attenuation = color(1.0, 1.0, 1.0);
-        FP_T refraction_ratio = rec.front_face ? (1.0 / ir) : ir;
+        FP_T refraction_ratio = rec.front_face ? ((FP_T)1.0 / ir) : ir;
 
         vec3 unit_direction = unit_vector(r_in.direction());
         FP_T cos_theta = fmin(dot(-unit_direction, rec.normal), (FP_T)1.0);
-        FP_T sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+        FP_T sin_theta = sqrt((FP_T)1.0 - cos_theta * cos_theta);
 
         bool cannot_refract = refraction_ratio * sin_theta > 1.0;
         vec3 direction;
@@ -105,7 +105,7 @@ class dielectric : public material {
         // Use Schlick's approximation for reflectance.
         auto r0 = (1 - ref_idx) / (1 + ref_idx);
         r0 = r0 * r0;
-        return r0 + (1 - r0) * pow((1 - cosine), 5);
+        return r0 + (1 - r0) * POW((1 - cosine), 5);
     }
 };
 

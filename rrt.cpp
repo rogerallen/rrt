@@ -29,7 +29,7 @@ color ray_color(const ray &r, const hittable *world, int depth, bool debug)
     // If we've exceeded the ray bounce limit, no more light is gathered.
     if (depth <= 0) return color(0, 0, 0);
 
-    if (world->hit(r, 0.001, infinity, rec, debug)) {
+    if (world->hit(r, (FP_T)0.001, (FP_T)infinity, rec, debug)) {
         ray scattered;
         color attenuation;
         if (rec.mat_ptr->scatter(r, rec, attenuation, scattered, debug)) {
@@ -45,8 +45,8 @@ color ray_color(const ray &r, const hittable *world, int depth, bool debug)
         return color(0, 0, 0);
     }
     vec3 unit_direction = unit_vector(r.direction());
-    auto t = 0.5 * (unit_direction.y() + 1.0);
-    auto c = (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
+    auto t = (FP_T)0.5 * (unit_direction.y() + (FP_T)1.0);
+    auto c = ((FP_T)1.0 - t) * color((FP_T)1.0, (FP_T)1.0, (FP_T)1.0) + t * color((FP_T)0.5, (FP_T)0.7, (FP_T)1.0);
     if (debug) printf("DEBUG sky c=%f %f %f\n", c.x(), c.y(), c.z());
     return c;
 }
@@ -82,7 +82,7 @@ hittable *create_world(scene *the_scene, bool bvh)
         world_list->add(make_shared<triangle>(t.vertices[0], t.vertices[1], t.vertices[2], materials[t.material_idx]));
     }
 
-    int num_hittables = the_scene->num_triangles() + the_scene->spheres.size() + the_scene->moving_spheres.size();
+    int num_hittables = (int)(the_scene->num_triangles() + the_scene->spheres.size() + the_scene->moving_spheres.size());
     std::cerr << "num_hittables = " << num_hittables << "\n";
 
     hittable *world = world_list;

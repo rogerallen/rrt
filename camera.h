@@ -10,8 +10,8 @@ class camera {
                    FP_T aspect_ratio, FP_T aperture, FP_T focus_dist, FP_T _time0 = 0, FP_T _time1 = 0)
     {
         auto theta = degrees_to_radians(vfov);
-        auto h = tan(theta / 2);
-        auto viewport_height = 2.0 * h;
+        auto h = tan(theta / (FP_T)2);
+        auto viewport_height = (FP_T)2.0 * h;
         auto viewport_width = aspect_ratio * viewport_height;
 
         w = unit_vector(lookfrom - lookat);

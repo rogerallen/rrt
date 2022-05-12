@@ -26,7 +26,7 @@ class Rrt {
           num_threads_x(threads_x), num_threads_y(threads_y)
 #endif
     {
-        aspect_ratio = 1.0 * image_width / image_height;
+        aspect_ratio = (FP_T)1.0 * image_width / image_height;
         fb = nullptr;
     }
     ~Rrt();
