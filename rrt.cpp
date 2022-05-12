@@ -12,7 +12,9 @@
 #include <iomanip>
 #include <iostream>
 #include <limits.h>
+#ifdef __linux__
 #include <unistd.h>
+#endif
 #include <vector>
 
 #include <omp.h>
@@ -167,8 +169,13 @@ vec3 *Rrt::render(scene *the_scene)
     std::string num_threads = std::to_string(omp_get_max_threads());
 #endif
 
+#ifdef __linux__
     char hostname[HOST_NAME_MAX];
     gethostname(hostname, HOST_NAME_MAX);
+#endif
+#ifdef WIN32
+    char hostname[] = "n/a";
+#endif
 
     std::cerr << "stats," << std::put_time(&render_tm, "%c %Z,") << std::string(hostname) << "," << cpu_version << ","
               << QUOTE(FP_T) << "," << image_width << "," << image_height << "," << samples_per_pixel << ","
